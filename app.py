@@ -14,7 +14,7 @@ from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
 
-load_dotenv()  # This loads .env values into the environment
+load_dotenv()  
 
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
 CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")

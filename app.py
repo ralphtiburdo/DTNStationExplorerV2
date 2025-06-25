@@ -988,10 +988,6 @@ def top_nav_bar():
 
     # Create the top bar
     with st.container():
-        st.markdown('<div class="top-bar">', unsafe_allow_html=True)
-
-        # Right-aligned hamburger menu
-        st.markdown('<div class="top-bar-user">', unsafe_allow_html=True)
 
         # Hamburger menu popover
         with st.popover("☰", use_container_width=False):

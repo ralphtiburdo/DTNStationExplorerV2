@@ -1,12 +1,10 @@
 [build]
-  command = "pip install -r requirements.txt && mkdir -p .streamlit && echo '[server]\nheadless = true\nport = $PORT\nenableCORS = false\n' > .streamlit/config.toml"
-  functions = "functions"
-  publish = "public"
-
-[[redirects]]
-  from = "/*"
-  to = "/.netlify/functions/server"
-  status = 200
+command = "pip install -r requirements.txt && streamlit run app.py --server.headless true --server.port $PORT"
+publish = "public"
+functions = "functions"
 
 [dev]
-  command = "streamlit run app.py --server.port $PORT --server.address 0.0.0.0"
+command = "streamlit run app.py"
+
+[build.environment]
+PYTHON_VERSION = "3.11"

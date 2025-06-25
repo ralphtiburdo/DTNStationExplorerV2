@@ -12,16 +12,16 @@ import calendar
 import numpy as np
 from datetime import datetime, timezone
 import os
+from dotenv import load_dotenv
 
-# Replace credential definitions with:
-CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL", "")
-CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL", "")
+load_dotenv()  # This loads .env values into the environment
 
-CLIENT_ID_CORE = os.getenv("CLIENT_ID_CORE", "")
-CLIENT_SECRET_CORE = os.getenv("CLIENT_SECRET_CORE", "")
-
-CLIENT_ID_PLUS = os.getenv("CLIENT_ID_PLUS", "")
-CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS", "")
+CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
+CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")
+CLIENT_ID_CORE = os.getenv("CLIENT_ID_CORE")
+CLIENT_SECRET_CORE = os.getenv("CLIENT_SECRET_CORE")
+CLIENT_ID_PLUS = os.getenv("CLIENT_ID_PLUS")
+CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS")
 
 # --- Helper functions ---
 def get_token(client_id, client_secret):

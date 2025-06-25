@@ -1,10 +1,11 @@
 [build]
-command = "pip install -r requirements.txt && streamlit run app.py --server.headless true --server.port $PORT"
-publish = "public"
-functions = "functions"
+  command   = "pip install -r requirements.txt"
+  publish   = "public"
+  functions = "functions"
+
 
 [dev]
 command = "streamlit run app.py"
 
 [build.environment]
-PYTHON_VERSION = "3.11"
+PYTHON_VERSION = "3.9

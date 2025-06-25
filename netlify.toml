@@ -1,5 +1,5 @@
 [build]
-  command = "pip install --upgrade pip && pip install -r requirements.txt && mkdir -p .streamlit && echo '[server]\nheadless = true\nport = $PORT\nenableCORS = false\n' > .streamlit/config.toml"
+  command = "pip install --upgrade pip && pip install wheel && pip install -r requirements.txt && mkdir -p .streamlit && echo '[server]\nheadless = true\nport = $PORT\nenableCORS = false\n' > .streamlit/config.toml"
   publish = "public"
   functions = "functions"
 

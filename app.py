@@ -13,8 +13,7 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
-
-load_dotenv()  
+load_dotenv()   # <-- this makes os.getenv pick up your .env
 
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
 CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")

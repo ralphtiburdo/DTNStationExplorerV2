@@ -1,12 +1,9 @@
 [build]
-  command = "pip install --upgrade pip && pip install wheel && pip install -r requirements.txt && mkdir -p .streamlit && echo '[server]\nheadless = true\nport = $PORT\nenableCORS = false\n' > .streamlit/config.toml"
-  publish = "public"
+  command = "pip install -r requirements.txt && mkdir -p .streamlit && echo '[server]\nheadless = true\nport = $PORT\nenableCORS = false\n' > .streamlit/config.toml"
   functions = "functions"
+  publish = "."
 
 [[redirects]]
   from = "/*"
-  to = "/index.html"
+  to = "/"
   status = 200
-
-[dev]
-  command = "streamlit run app.py --server.port $PORT --server.address 0.0.0.0"

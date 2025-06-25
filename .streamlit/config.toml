@@ -5,19 +5,7 @@ enableCORS = false
 port = $PORT
 
 [theme]
-# Choose “light” or “dark” base
-base = "light"
+base="light"
+primaryColor="#107481"
 
-# Primary accent (buttons, sliders, etc.)
-primaryColor = "#107481"
-
-# Backgrounds
-backgroundColor = "#0e1117"
-secondaryBackgroundColor = "#1a1d24"
-
-# Default text color
-textColor = "#f0f2f6"
-
-# “sans serif”, “serif”, or “monospace”
-font = "sans serif"
 

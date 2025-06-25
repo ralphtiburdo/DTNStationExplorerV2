@@ -13,7 +13,8 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
-load_dotenv()   # <-- this makes os.getenv pick up your .env
+
+load_dotenv()  # <-- this makes os.getenv pick up your .env
 
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
 CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")
@@ -21,6 +22,7 @@ CLIENT_ID_CORE = os.getenv("CLIENT_ID_CORE")
 CLIENT_SECRET_CORE = os.getenv("CLIENT_SECRET_CORE")
 CLIENT_ID_PLUS = os.getenv("CLIENT_ID_PLUS")
 CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS")
+
 
 # --- Helper functions ---
 def get_token(client_id, client_secret):
@@ -391,6 +393,24 @@ def show_dashboard(df, token):
             transform: translateY(-3px);
             box-shadow: 0 6px 16px rgba(0,0,0,0.12);
         }
+        
+        /* Placeholder card styling */
+        .placeholder-card {
+            background: #ffffff;
+            border-radius: 8px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+            padding: 20px;
+            margin-bottom: 20px;
+            border-left: 4px solid #00a99d;
+            transition: transform 0.3s, box-shadow 0.3s;
+            text-align: center;
+            font-size: 1.1rem;
+        }
+        
+        .placeholder-card:hover {
+            transform: translateY(-3px);
+            box-shadow: 0 6px 16px rgba(0,0,0,0.12);
+        }
 
         .parameter-header {
             font-weight: bold;
@@ -507,6 +527,7 @@ def show_dashboard(df, token):
             color: #0072b5;
             margin-bottom: 10px;
         }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -550,6 +571,12 @@ def show_dashboard(df, token):
                 background-color: #1a1d24 !important;
                 border-color: #2d3746 !important;
                 color: #f0f2f6 !important;
+            }
+
+            .placeholder-card {
+                background-color: #1a1d24 !important;
+                border-color: #2d3746 !important;
+                color: #9aa5b1 !important;
             }
         </style>
         """, unsafe_allow_html=True)
@@ -662,9 +689,10 @@ def show_dashboard(df, token):
         # Export functionality
         with st.expander("Export Results", expanded=False):
             # Define columns to exclude from export
-            EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob','isArchived','tags.wmo','tags.icao','tags.iata',
-                            'tags.madisId','tags.ghcndID','tags.eaukID','tags.davisId','tags.dtnLegacyID','tags.dwdID',
-                            'tags.faa','lastObsTimestamp']
+            EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob', 'isArchived', 'tags.wmo', 'tags.icao', 'tags.iata',
+                            'tags.madisId', 'tags.ghcndID', 'tags.eaukID', 'tags.davisId', 'tags.dtnLegacyID',
+                            'tags.dwdID',
+                            'tags.faa', 'lastObsTimestamp']
 
             # Get available columns excluding hidden ones
             available_cols = [c for c in df.columns if c not in EXCLUDE_COLS]
@@ -690,7 +718,7 @@ def show_dashboard(df, token):
                         buf = io.BytesIO()
                         with pd.ExcelWriter(buf, engine="xlsxwriter") as w:
                             df_to_export.to_excel(w, sheet_name="Stations", index=False)
-                        st.download_button("ownload", buf.getvalue(),
+                        st.download_button("Download", buf.getvalue(),
                                            file_name="stations.xlsx", use_container_width=True)
                     except ImportError:
                         st.warning(
@@ -724,140 +752,154 @@ def show_dashboard(df, token):
 
         st.markdown("<div class='panel-header'>🔍 Station Details</div>", unsafe_allow_html=True)
 
+        md = {}  # Initialize empty station metadata
+        sel = None
+
         if not fdf.empty:
-            sel = st.selectbox("Select a station:", options=results['Station Code'], key="station_selector")
+            sel = st.selectbox("Select a station:",
+                               options=results['Station Code'],
+                               key="station_selector",
+                               index=None,
+                               placeholder="Select station...")
             status_placeholder = st.empty()
 
             if sel:
                 md = fetch_station_metadata(sel, token, status_placeholder=status_placeholder)
-                p = md.get("properties", {})
-                g = md.get("geometry", {})
-                tags = p.get("tags", {}) or {}
-                last_obs_str = p.get("lastObsTimestamp")
 
-                # Status styling
-                status, status_class = "Unknown", ""
-                human_time = "N/A"
-                if last_obs_str:
-                    try:
-                        last_obs_dt = datetime.fromisoformat(last_obs_str.replace("Z", "+00:00"))
-                        delta = datetime.now(timezone.utc) - last_obs_dt
-                        if delta.days > 0:
-                            human_time = f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
-                        elif delta.seconds >= 3600:
-                            human_time = f"{delta.seconds // 3600} hour(s) ago"
-                        elif delta.seconds >= 60:
-                            human_time = f"{delta.seconds // 60} minute(s) ago"
-                        else:
-                            human_time = "just now"
-                        status = "Active" if delta.total_seconds() <= 3 * 86400 else "Inactive"
-                        status_class = "status-active" if status == "Active" else "status-inactive"
-                    except:
-                        human_time = last_obs_str
+        # If no station selected, show placeholder
+        if not md:
+            st.markdown("""
+            <div class="placeholder-card">
+                <div style="font-size: 5rem; margin-bottom: 20px;">🌦️</div>
+                <div>Please select a station to view details</div>
+            </div>
+            """, unsafe_allow_html=True)
+        else:
+            # Process station metadata
+            p = md.get("properties", {})
+            g = md.get("geometry", {})
+            tags = p.get("tags", {}) or {}
+            last_obs_str = p.get("lastObsTimestamp")
 
-                first_obs_fmt = "-"
-                first_obs_str = p.get("firstObsTimestamp")
-                if first_obs_str:
-                    try:
-                        dt = datetime.fromisoformat(first_obs_str.replace("Z", "+00:00"))
-                        first_obs_fmt = dt.strftime("%B %d, %Y %I:%M %p").lstrip("0")
-                    except:
-                        first_obs_fmt = first_obs_str
+            # Status styling
+            status, status_class = "Unknown", ""
+            human_time = "N/A"
+            if last_obs_str:
+                try:
+                    last_obs_dt = datetime.fromisoformat(last_obs_str.replace("Z", "+00:00"))
+                    delta = datetime.now(timezone.utc) - last_obs_dt
+                    if delta.days > 0:
+                        human_time = f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
+                    elif delta.seconds >= 3600:
+                        human_time = f"{delta.seconds // 3600} hour(s) ago"
+                    elif delta.seconds >= 60:
+                        human_time = f"{delta.seconds // 60} minute(s) ago"
+                    else:
+                        human_time = "just now"
+                    status = "Active" if delta.total_seconds() <= 3 * 86400 else "Inactive"
+                    status_class = "status-active" if status == "Active" else "status-inactive"
+                except:
+                    human_time = last_obs_str
 
-                # Build station card
-                card_html = f"""
-                <div class="station-card">
-                    <h3>
-                        <span>{md.get('stationCode', '-')}</span>
-                        <span class="{status_class}">{status}</span>
-                    </h3>
-                    <div class="station-property">
-                        <div class="property-label">Name:</div>
-                        <div class="property-value">{tags.get('name', '-')}</div>
+            first_obs_fmt = "-"
+            first_obs_str = p.get("firstObsTimestamp")
+            if first_obs_str:
+                try:
+                    dt = datetime.fromisoformat(first_obs_str.replace("Z", "+00:00"))
+                    first_obs_fmt = dt.strftime("%B %d, %Y %I:%M %p").lstrip("0")
+                except:
+                    first_obs_fmt = first_obs_str
+
+            # Build station card
+            card_html = f"""
+            <div class="station-card">
+                <h3>
+                    <span>{md.get('stationCode', '-')}</span>
+                    <span class="{status_class}">{status}</span>
+                </h3>
+                <div class="station-property">
+                    <div class="property-label">Name:</div>
+                    <div class="property-value">{tags.get('name', '-')}</div>
+                </div>
+                <div class="station-property">
+                    <div class="property-label">Coordinates:</div>
+                    <div class="property-value">{g.get('coordinates', ['-', '-'])[0]}, {g.get('coordinates', ['-', '-'])[1]}</div>
+                </div>
+                <div class="station-property">
+                    <div class="property-label">Elevation:</div>
+                    <div class="property-value">{p.get('elevation', '-')} m</div>
+                </div>
+                <div class="station-property">
+                    <div class="property-label">Obs Types:</div>
+                    <div class="property-value">{', '.join(p.get('obsTypes', [])) or '-'}</div>
+                </div>
+                <div class="station-property">
+                    <div class="property-label">First Obs:</div>
+                    <div class="property-value">{first_obs_fmt}</div>
+                </div>
+                <div class="station-property">
+                    <div class="property-label">Latest Obs:</div>
+                    <div class="property-value">{human_time}</div>
+                </div>
+            """
+
+            # Add identifiers
+            if any(tags.values()):
+                card_html += """<div class="station-property">
+                    <div class="property-label">Identifiers:</div>
+                    <div class="property-value">"""
+                for k, v in tags.items():
+                    if v and k != "name":
+                        card_html += f"<div><strong>{k.replace('_', ' ').title()}:</strong> {v}</div>"
+                card_html += "</div></div>"
+
+            card_html += "</div>"
+
+            st.markdown(card_html, unsafe_allow_html=True)
+
+            # Parameter metadata table
+            ac = p.get("archiveCounts", {})
+            if ac:
+                st.markdown("<div class='section-header'>Parameter Metadata</div>", unsafe_allow_html=True)
+                param_df = extract_parameter_metadata(ac)
+
+                # Create card for each parameter
+                for _, row in param_df.iterrows():
+                    param_name = row['Parameter']
+
+                    param_card = f"""
+                    <div class="parameter-card">
+                        <div class="parameter-header">{param_name}</div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">First Obs:</div>
+                            <div class="parameter-value">{row['First Obs']}</div>
+                        </div>
+                        <div class="parameter-row">
+                            <div class="parameter-label">Latest Obs:</div>
+                            <div class="parameter-value">{row['Latest Obs']}</div>
+                        </div>
                     </div>
-                    <div class="station-property">
-                        <div class="property-label">Coordinates:</div>
-                        <div class="property-value">{g.get('coordinates', ['-', '-'])[0]}, {g.get('coordinates', ['-', '-'])[1]}</div>
-                    </div>
-                    <div class="station-property">
-                        <div class="property-label">Elevation:</div>
-                        <div class="property-value">{p.get('elevation', '-')} m</div>
-                    </div>
-                    <div class="station-property">
-                        <div class="property-label">Obs Types:</div>
-                        <div class="property-value">{', '.join(p.get('obsTypes', [])) or '-'}</div>
-                    </div>
-                    <div class="station-property">
-                        <div class="property-label">First Obs:</div>
-                        <div class="property-value">{first_obs_fmt}</div>
-                    </div>
-                    <div class="station-property">
-                        <div class="property-label">Latest Obs:</div>
-                        <div class="property-value">{human_time}</div>
-                    </div>
-                """
+                    """
+                    st.markdown(param_card, unsafe_allow_html=True)
 
-                # Add identifiers
-                if any(tags.values()):
-                    card_html += """<div class="station-property">
-                        <div class="property-label">Identifiers:</div>
-                        <div class="property-value">"""
-                    for k, v in tags.items():
-                        if v and k != "name":
-                            card_html += f"<div><strong>{k.replace('_', ' ').title()}:</strong> {v}</div>"
-                    card_html += "</div></div>"
-
-                card_html += "</div>"
-
-                st.markdown(card_html, unsafe_allow_html=True)
-
-                # Parameter metadata table
-                ac = p.get("archiveCounts", {})
-                if ac:
-                    st.markdown("<div class='section-header'>Parameter Metadata</div>", unsafe_allow_html=True)
-                    param_df = extract_parameter_metadata(ac)
-
-                    # Create card for each parameter
-                    for _, row in param_df.iterrows():
-                        param_name = row['Parameter']
-
-                        param_card = f"""
-                        <div class="parameter-card">
-                            <div class="parameter-header">{param_name}</div>
-                            <div class="parameter-row">
-                                <div class="parameter-label">First Obs:</div>
-                                <div class="parameter-value">{row['First Obs']}</div>
-                            </div>
-                            <div class="parameter-row">
-                                <div class="parameter-label">Latest Obs:</div>
-                                <div class="parameter-value">{row['Latest Obs']}</div>
+                    # Use expander for heatmap with custom label
+                    with st.expander(f"{param_name} Availability", expanded=False):
+                        # Wrap in custom styling
+                        st.markdown(f"""
+                        <div class="custom-expander">
+                            <div class="custom-expander-content">
+                                {generate_heatmap(ac, param_name)}
                             </div>
                         </div>
-                        """
-                        st.markdown(param_card, unsafe_allow_html=True)
-
-                        # Use expander for heatmap with custom label
-                        with st.expander(f"{param_name} Availability", expanded=False):
-                            # Wrap in custom styling
-                            st.markdown(f"""
-                            <div class="custom-expander">
-                                <div class="custom-expander-content">
-                                    {generate_heatmap(ac, param_name)}
-                                </div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                else:
-                    st.info("No parameter archive metadata available.")
-        else:
-            st.info("No stations to display. Please adjust your filters.")
-
-        st.markdown("</div>", unsafe_allow_html=True)  # Close collapsible-panel
+                        """, unsafe_allow_html=True)
+            else:
+                st.info("No parameter archive metadata available.")
 
     # Main content area - Map and Table
     if show and not fdf.empty:
         st.markdown("<div class='section-header'>Stations Map</div>", unsafe_allow_html=True)
         layer = pdk.Layer("ScatterplotLayer", data=fdf, get_position='[longitude, latitude]',
-                          get_radius=20, get_fill_color=[1, 164, 159, 180] , pickable=True, auto_highlight=True,
+                          get_radius=20, get_fill_color=[1, 164, 159, 180], pickable=True, auto_highlight=True,
                           radius_min_pixels=2)
 
         vs = compute_view(fdf[['longitude', 'latitude']].dropna().values.tolist())
@@ -865,7 +907,7 @@ def show_dashboard(df, token):
                                  tooltip={"html": "<b>Station Code:</b> {stationCode}<br/><b>Name:</b> {name}",
                                           "style": {"backgroundColor": "#0072b5", "color": "white"}}))
 
-        st.markdown(f"<div class='section-header'>{len(results)} Active Station(s)</div>",  unsafe_allow_html=True)
+        st.markdown(f"<div class='section-header'>{len(results)} Active Station(s)</div>", unsafe_allow_html=True)
 
         # Main table
         height = min(35 * len(results) + 50, 1000)
@@ -1030,4 +1072,3 @@ def main():
 
 if __name__ == "__main__":
     main()
-

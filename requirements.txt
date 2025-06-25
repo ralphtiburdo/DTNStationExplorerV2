@@ -3,4 +3,6 @@ requests
 pandas
 reverse_geocode
 pydeck
+numpy
+python-dotenv
 xlsxwriter

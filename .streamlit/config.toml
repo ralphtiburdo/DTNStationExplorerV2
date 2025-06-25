@@ -1,0 +1,5 @@
+[server]
+headless = true
+enableCORS = false
+# Streamlit Cloud will inject  automatically
+port = $PORT

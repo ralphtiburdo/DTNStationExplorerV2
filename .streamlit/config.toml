@@ -3,3 +3,21 @@ headless = true
 enableCORS = false
 # Streamlit Cloud will inject  automatically
 port = $PORT
+
+[theme]
+# Choose “light” or “dark” base
+base = "light"
+
+# Primary accent (buttons, sliders, etc.)
+primaryColor = "#107481"
+
+# Backgrounds
+backgroundColor = "#0e1117"
+secondaryBackgroundColor = "#1a1d24"
+
+# Default text color
+textColor = "#f0f2f6"
+
+# “sans serif”, “serif”, or “monospace”
+font = "sans serif"
+

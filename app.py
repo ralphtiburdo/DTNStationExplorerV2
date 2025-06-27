@@ -62,15 +62,26 @@ def get_stations_by_access(access_choice: str):
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
                'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
                'tags.ghcndID': 'ghcndID'}
+
+    # Create new columns with default empty string
+    for new_col in tag_map.values():
+        df[new_col] = ""
+
+    # Fill new columns from tags where available
     for old, new in tag_map.items():
-        df[new] = df[old] if old in df.columns else ""
-    df.drop(columns=[c for c in df.columns if c.startswith('tags.') and c not in tag_map], errors='ignore',
-            inplace=True)
+        if old in df.columns:
+            df[new] = df[old].fillna("")
+
+    # Drop original tag columns
+    df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
+
+    # Handle list-type columns safely
     df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
     df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(
-        lambda x: x if isinstance(x, list) else str(x).split(",") if isinstance(x, str) else [])
+        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
     df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(
-        lambda x: x if isinstance(x, list) else str(x).split(",") if isinstance(x, str) else [])
+        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
+
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
     return df, token

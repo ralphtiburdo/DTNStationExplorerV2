@@ -43,11 +43,6 @@ def login():
             display: none !important;
         }
 
-        /* Ensure clean full-page layout */
-        .stApp {
-            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
-        }
-
         /* Hide the main container padding */
         .main .block-container {
             padding-top: 0 !important;

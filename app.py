@@ -13,6 +13,7 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
+import hashlib 
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:

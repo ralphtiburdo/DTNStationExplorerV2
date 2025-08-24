@@ -107,18 +107,34 @@ def login():
             to { transform: translateX(-50%) scaleX(1); }
         }
 
+        /* Input container styling */
+        .stTextInput {
+            position: relative !important;
+            margin-bottom: 25px !important;
+        }
+
+        /* Hide default labels */
+        .stTextInput > label {
+            display: none !important;
+        }
+
         /* Input field styling */
+        .stTextInput > div > div {
+            position: relative !important;
+        }
+
         .stTextInput > div > div > input {
             background: rgba(255, 255, 255, 0.8) !important;
             border: 2px solid rgba(0, 114, 181, 0.1) !important;
             border-radius: 12px !important;
-            padding: 14px 18px !important;
+            padding: 20px 18px 8px 18px !important;
             font-size: 15px !important;
             font-family: 'Inter', sans-serif !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             backdrop-filter: blur(10px) !important;
             color: #2d3748 !important;
             font-weight: 400 !important;
+            width: 100% !important;
         }
 
         .stTextInput > div > div > input:focus {
@@ -128,20 +144,51 @@ def login():
                 0 4px 12px rgba(0, 114, 181, 0.15) !important;
             transform: translateY(-1px) !important;
             background: rgba(255, 255, 255, 0.95) !important;
+            outline: none !important;
         }
 
+        /* Remove default placeholder */
         .stTextInput > div > div > input::placeholder {
-            color: #a0aec0 !important;
-            font-weight: 400 !important;
+            color: transparent !important;
         }
 
-        /* Label styling */
-        .stTextInput > label {
-            color: #4a5568 !important;
-            font-weight: 500 !important;
-            font-size: 14px !important;
-            margin-bottom: 8px !important;
-            font-family: 'Inter', sans-serif !important;
+        /* Floating label styling */
+        .stTextInput > div > div::before {
+            content: attr(data-label);
+            position: absolute;
+            left: 18px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #a0aec0;
+            font-size: 15px;
+            font-weight: 400;
+            font-family: 'Inter', sans-serif;
+            pointer-events: none;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: transparent;
+            z-index: 1;
+        }
+
+        /* Floating label animation - when focused or has value */
+        .stTextInput > div > div:focus-within::before,
+        .stTextInput > div > div:has(input:not(:placeholder-shown))::before {
+            top: 8px;
+            left: 14px;
+            font-size: 12px;
+            font-weight: 500;
+            color: #0072b5;
+            transform: translateY(0);
+            background: linear-gradient(to right, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%);
+            padding: 0 4px;
+        }
+
+        /* Add labels with JavaScript-like approach using CSS */
+        .stTextInput:nth-of-type(1) > div > div::before {
+            content: 'Username';
+        }
+
+        .stTextInput:nth-of-type(2) > div > div::before {
+            content: 'Password';
         }
 
         /* Button styling */
@@ -271,8 +318,8 @@ def login():
     st.markdown('<div class="login-title">DTN Station Explorer Login</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
+        username = st.text_input("", placeholder="", key="username_input")
+        password = st.text_input("", type="password", placeholder="", key="password_input")
         submitted = st.form_submit_button("Login")
 
         if submitted:
@@ -285,10 +332,6 @@ def login():
                 st.error("Invalid username or password")
 
     st.markdown('</div>', unsafe_allow_html=True)
-# Show login screen if not authenticated
-if not st.session_state.authenticated:
-    login()
-    st.stop()
 
 load_dotenv()  # <-- this makes os.getenv pick up your .env
 

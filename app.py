@@ -67,31 +67,6 @@ def login():
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
-        /* Animated background gradient */
-        .login-container::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, 
-                rgba(0, 114, 181, 0.1) 0%, 
-                rgba(0, 169, 157, 0.1) 25%,
-                rgba(138, 43, 226, 0.1) 50%,
-                rgba(255, 20, 147, 0.1) 75%,
-                rgba(0, 114, 181, 0.1) 100%);
-            animation: gradientShift 8s ease-in-out infinite;
-            z-index: -1;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { transform: rotate(0deg) scale(1); }
-            25% { transform: rotate(90deg) scale(1.1); }
-            50% { transform: rotate(180deg) scale(1); }
-            75% { transform: rotate(270deg) scale(1.1); }
-        }
-
         /* Title styling */
         .login-title {
             text-align: center;

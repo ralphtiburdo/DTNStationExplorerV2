@@ -154,41 +154,63 @@ def login():
             outline: none !important;
         }
 
-        /* Style the label as floating label */
+        /* Hide the default Streamlit label completely since it's interfering */
         .stTextInput > label {
-            position: absolute !important;
-            left: 16px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            background: linear-gradient(135deg, #0072b5, #00a99d) !important;
-            background-clip: text !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            font-size: 16px !important;
-            font-weight: 500 !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            pointer-events: none !important;
-            z-index: 10 !important;
-            margin: 0 !important;
+            display: none !important;
         }
 
-        /* Move label up when input is focused or has value */
-        .stTextInput > div > div > input:focus ~ label,
-        .stTextInput > div > div > input:not([value=""]) ~ label {
-            top: 12px !important;
-            transform: translateY(0) !important;
-            font-size: 12px !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
+        /* Create our own floating labels using ::before pseudo-element */
+        .stTextInput:nth-of-type(1)::before {
+            content: 'Username';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #0072b5, #00a99d);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 10;
         }
 
-        /* Alternative approach - move label when input has content */
-        .stTextInput:has(input:not(:placeholder-shown)) > label {
-            top: 12px !important;
-            transform: translateY(0) !important;
-            font-size: 12px !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
+        .stTextInput:nth-of-type(2)::before {
+            content: 'Password';
+            position: absolute;
+            left: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: linear-gradient(135deg, #0072b5, #00a99d);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 16px;
+            font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 10;
+        }
+
+        /* Move labels up when input is focused */
+        .stTextInput:nth-of-type(1):focus-within::before,
+        .stTextInput:nth-of-type(2):focus-within::before {
+            top: 12px;
+            transform: translateY(0);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+
+        /* Move labels up when input has content (JavaScript will handle this) */
+        .stTextInput.has-content::before {
+            top: 12px;
+            transform: translateY(0);
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
         /* Login button styling */
@@ -305,7 +327,34 @@ def login():
                 transform: translateY(0);
             }
         }
-    </style>""", unsafe_allow_html=True)
+    </style>
+
+    <script>
+        // Function to check if inputs have content and add class accordingly
+        function updateFloatingLabels() {
+            const textInputs = document.querySelectorAll('.stTextInput input');
+            textInputs.forEach((input, index) => {
+                const container = input.closest('.stTextInput');
+                if (input.value && input.value.trim() !== '') {
+                    container.classList.add('has-content');
+                } else {
+                    container.classList.remove('has-content');
+                }
+            });
+        }
+
+        // Run on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(updateFloatingLabels, 100);
+        });
+
+        // Run periodically to catch Streamlit updates
+        setInterval(updateFloatingLabels, 500);
+
+        // Also run when inputs change
+        document.addEventListener('input', updateFloatingLabels);
+    </script>
+    """, unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
 

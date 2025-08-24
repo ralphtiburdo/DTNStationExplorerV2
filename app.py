@@ -21,73 +21,67 @@ if 'login_attempted' not in st.session_state:
     st.session_state.login_attempted = False
 
 
-# Login function
+# Login function with modern floating label design
 def login():
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+        /* Main container styling */
         .login-container {
             max-width: 420px;
             margin: 80px auto;
-            padding: 40px 35px;
-            border-radius: 20px;
+            padding: 40px;
+            border-radius: 24px;
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.2);
             box-shadow: 
-                0 8px 32px rgba(0, 114, 181, 0.12),
-                0 2px 16px rgba(0, 0, 0, 0.08);
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                0 2px 8px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             overflow: hidden;
-            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
+        /* Animated background gradient */
         .login-container::before {
             content: '';
             position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(0, 114, 181, 0.05),
-                transparent
-            );
-            transition: left 0.6s ease;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, 
+                rgba(0, 114, 181, 0.1) 0%, 
+                rgba(0, 169, 157, 0.1) 25%,
+                rgba(138, 43, 226, 0.1) 50%,
+                rgba(255, 20, 147, 0.1) 75%,
+                rgba(0, 114, 181, 0.1) 100%);
+            animation: gradientShift 8s ease-in-out infinite;
+            z-index: -1;
         }
 
-        .login-container:hover {
-            transform: translateY(-4px);
-            box-shadow: 
-                0 12px 40px rgba(0, 114, 181, 0.18),
-                0 4px 20px rgba(0, 0, 0, 0.12);
+        @keyframes gradientShift {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
         }
 
-        .login-container:hover::before {
-            left: 100%;
-        }
-
+        /* Title styling */
         .login-title {
             text-align: center;
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #667eea 100%);
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 100%);
+            background-clip: text;
             -webkit-background-clip: text;
             -webkit-text-fill-color: transparent;
-            background-clip: text;
-            margin-bottom: 35px;
+            margin-bottom: 40px;
             font-size: 28px;
             font-weight: 700;
             letter-spacing: -0.5px;
             position: relative;
-            animation: titleGlow 3s ease-in-out infinite;
-        }
-
-        @keyframes titleGlow {
-            0%, 100% { filter: brightness(1); }
-            50% { filter: brightness(1.2); }
         }
 
         .login-title::after {
@@ -95,203 +89,191 @@ def login():
             position: absolute;
             bottom: -8px;
             left: 50%;
+            transform: translateX(-50%);
             width: 60px;
             height: 3px;
-            background: linear-gradient(135deg, #0072b5, #00a99d);
+            background: linear-gradient(90deg, #0072b5, #00a99d);
             border-radius: 2px;
-            transform: translateX(-50%) scaleX(0);
-            animation: underlineGrow 1s ease-out 0.5s forwards;
+            animation: titleUnderline 2s ease-out;
         }
 
-        @keyframes underlineGrow {
-            to { transform: translateX(-50%) scaleX(1); }
+        @keyframes titleUnderline {
+            0% { width: 0; opacity: 0; }
+            100% { width: 60px; opacity: 1; }
         }
 
-        /* Input field container styling */
-        .stTextInput {
-            position: relative !important;
-            margin-bottom: 25px !important;
-        }
-
-        .stTextInput > div > div {
-            position: relative !important;
-        }
-
-        .stTextInput > div > div > input {
-            background: rgba(255, 255, 255, 0.8) !important;
-            border: 2px solid rgba(0, 114, 181, 0.1) !important;
-            border-radius: 12px !important;
-            padding: 20px 18px 14px 18px !important;
-            font-size: 15px !important;
-            font-family: 'Inter', sans-serif !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            backdrop-filter: blur(10px) !important;
-            color: #2d3748 !important;
-            font-weight: 400 !important;
-        }
-
+        /* Hide default Streamlit input styling */
+        .stTextInput > div > div > input,
         .stTextInput > div > div > input:focus {
-            border-color: #0072b5 !important;
-            box-shadow: 
-                0 0 0 3px rgba(0, 114, 181, 0.1),
-                0 4px 12px rgba(0, 114, 181, 0.15) !important;
-            transform: translateY(-1px) !important;
-            background: rgba(255, 255, 255, 0.95) !important;
+            border: none !important;
             outline: none !important;
+            background: transparent !important;
+            box-shadow: none !important;
         }
 
-        .stTextInput > div > div > input::placeholder {
-            color: transparent !important;
+        /* Custom input container */
+        .floating-input-container {
+            position: relative;
+            margin-bottom: 24px;
         }
 
-        /* Hide default Streamlit labels */
-        .stTextInput > label {
-            display: none !important;
+        .floating-input {
+            width: 100%;
+            padding: 20px 16px 8px 16px;
+            border: 2px solid rgba(0, 114, 181, 0.2);
+            border-radius: 12px;
+            background: rgba(255, 255, 255, 0.8);
+            font-size: 16px;
+            font-weight: 400;
+            color: #2d3748;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            backdrop-filter: blur(10px);
         }
 
-        /* Floating label styling */
-        .stTextInput > div > div::before {
-            content: attr(data-label);
+        .floating-input:focus {
+            border-color: #0072b5;
+            background: rgba(255, 255, 255, 0.95);
+            box-shadow: 
+                0 0 0 4px rgba(0, 114, 181, 0.1),
+                0 4px 12px rgba(0, 114, 181, 0.15);
+            transform: translateY(-2px);
+        }
+
+        .floating-label {
             position: absolute;
-            left: 18px;
+            left: 16px;
             top: 50%;
             transform: translateY(-50%);
-            color: #a0aec0;
-            font-size: 15px;
-            font-weight: 400;
-            font-family: 'Inter', sans-serif;
-            pointer-events: none;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            z-index: 1;
-            background: transparent;
-        }
-
-        .stTextInput > div > div:focus-within::before,
-        .stTextInput > div > div > input:not(:placeholder-shown) + *::before {
-            top: 8px;
-            left: 14px;
-            font-size: 12px;
-            color: #0072b5;
+            background: linear-gradient(135deg, #0072b5, #00a99d);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            font-size: 16px;
             font-weight: 500;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            pointer-events: none;
+            z-index: 1;
+        }
+
+        .floating-input:focus + .floating-label,
+        .floating-input:not(:placeholder-shown) + .floating-label,
+        .floating-input.has-value + .floating-label {
+            top: 12px;
             transform: translateY(0);
-            background: rgba(255, 255, 255, 0.9);
-            padding: 0 4px;
-            border-radius: 4px;
+            font-size: 12px;
+            font-weight: 600;
+            letter-spacing: 0.5px;
         }
 
-        /* Custom floating labels using JavaScript-like approach with CSS */
-        .stTextInput:nth-of-type(1) > div > div::before {
-            content: "Username";
+        /* Input icons */
+        .input-icon {
+            position: absolute;
+            right: 16px;
+            top: 50%;
+            transform: translateY(-50%);
+            color: #0072b5;
+            opacity: 0.6;
+            transition: all 0.3s ease;
+            font-size: 18px;
         }
 
-        .stTextInput:nth-of-type(2) > div > div::before {
-            content: "Password";
+        .floating-input:focus ~ .input-icon {
+            opacity: 1;
+            transform: translateY(-50%) scale(1.1);
         }
 
-        /* Button styling */
+        /* Login button styling */
         .stButton > button {
             width: 100% !important;
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #667eea 100%) !important;
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 100%) !important;
             background-size: 200% 200% !important;
             color: white !important;
             border: none !important;
-            padding: 16px 24px !important;
+            padding: 16px 32px !important;
             border-radius: 12px !important;
             font-size: 16px !important;
             font-weight: 600 !important;
-            font-family: 'Inter', sans-serif !important;
-            letter-spacing: 0.3px !important;
-            cursor: pointer !important;
+            letter-spacing: 0.5px !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
             position: relative !important;
             overflow: hidden !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            animation: gradientShift 3s ease infinite !important;
-        }
-
-        @keyframes gradientShift {
-            0%, 100% { background-position: 0% 50%; }
-            50% { background-position: 100% 50%; }
-        }
-
-        .stButton > button::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(
-                90deg,
-                transparent,
-                rgba(255, 255, 255, 0.2),
-                transparent
-            );
-            transition: left 0.5s ease;
+            box-shadow: 0 4px 16px rgba(0, 114, 181, 0.3) !important;
+            text-transform: uppercase !important;
         }
 
         .stButton > button:hover {
+            background-position: 100% 0 !important;
             transform: translateY(-2px) !important;
-            box-shadow: 
-                0 8px 25px rgba(0, 114, 181, 0.3),
-                0 4px 12px rgba(0, 0, 0, 0.15) !important;
-            filter: brightness(1.05) !important;
-        }
-
-        .stButton > button:hover::before {
-            left: 100%;
+            box-shadow: 0 8px 24px rgba(0, 114, 181, 0.4) !important;
         }
 
         .stButton > button:active {
             transform: translateY(0) !important;
-            transition: transform 0.1s !important;
+            box-shadow: 0 4px 12px rgba(0, 114, 181, 0.3) !important;
+        }
+
+        /* Button ripple effect */
+        .stButton > button::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 0 !important;
+            height: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(255, 255, 255, 0.3) !important;
+            transform: translate(-50%, -50%) !important;
+            transition: width 0.6s, height 0.6s !important;
+        }
+
+        .stButton > button:active::before {
+            width: 300px !important;
+            height: 300px !important;
         }
 
         /* Error message styling */
         .stAlert {
-            background: rgba(254, 226, 226, 0.8) !important;
-            border: 1px solid rgba(252, 165, 165, 0.5) !important;
-            border-radius: 10px !important;
-            backdrop-filter: blur(10px) !important;
-            animation: shake 0.5s ease-in-out, fadeIn 0.3s ease-out !important;
+            border-radius: 8px !important;
+            border-left: 4px solid #e53e3e !important;
         }
 
-        @keyframes shake {
-            0%, 100% { transform: translateX(0); }
-            25% { transform: translateX(-5px); }
-            75% { transform: translateX(5px); }
+        /* Floating particles animation */
+        .login-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(0, 114, 181, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 169, 157, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 60% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%);
+            animation: particleFloat 12s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
         }
 
-        @keyframes fadeIn {
-            from { opacity: 0; transform: translateY(-10px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Form container */
-        .stForm {
-            animation: slideUp 0.6s ease-out 0.2s both;
-        }
-
-        @keyframes slideUp {
-            from { 
-                opacity: 0; 
-                transform: translateY(20px); 
+        @keyframes particleFloat {
+            0%, 100% { 
+                background-position: 0% 0%, 100% 100%, 50% 0%;
+                opacity: 0.5;
             }
-            to { 
-                opacity: 1; 
-                transform: translateY(0); 
+            33% { 
+                background-position: 30% 30%, 70% 70%, 80% 30%;
+                opacity: 0.8;
             }
-        }
-
-        /* Loading animation for button */
-        .stButton > button:focus {
-            background: linear-gradient(135deg, #005a8b 0%, #007d7a 50%, #5a67d8 100%) !important;
+            66% { 
+                background-position: 70% 10%, 30% 80%, 20% 60%;
+                opacity: 0.6;
+            }
         }
 
         /* Responsive design */
         @media (max-width: 480px) {
             .login-container {
                 margin: 40px 20px;
-                padding: 30px 25px;
+                padding: 30px 24px;
             }
 
             .login-title {
@@ -299,25 +281,85 @@ def login():
             }
         }
 
-        /* Add subtle floating animation */
+        /* Smooth page entry animation */
         .login-container {
-            animation: float 6s ease-in-out infinite;
+            animation: slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
         }
 
-        @keyframes float {
-            0%, 100% { transform: translateY(0px); }
-            50% { transform: translateY(-3px); }
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
         }
     </style>
+
+    <script>
+        // Add JavaScript for floating label functionality
+        function setupFloatingLabels() {
+            const inputs = document.querySelectorAll('.floating-input');
+            inputs.forEach(input => {
+                // Check if input has value on page load
+                if (input.value) {
+                    input.classList.add('has-value');
+                }
+
+                // Add event listeners
+                input.addEventListener('input', function() {
+                    if (this.value) {
+                        this.classList.add('has-value');
+                    } else {
+                        this.classList.remove('has-value');
+                    }
+                });
+
+                input.addEventListener('blur', function() {
+                    if (!this.value) {
+                        this.classList.remove('has-value');
+                    }
+                });
+            });
+        }
+
+        // Set up when page loads
+        document.addEventListener('DOMContentLoaded', setupFloatingLabels);
+
+        // Also set up after Streamlit updates (for dynamic content)
+        setTimeout(setupFloatingLabels, 100);
+    </script>
     """, unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">DTN Station Explorer Login</div>', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">DTN Station Explorer</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        username = st.text_input("Username", placeholder=" ", key="username_input")
-        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
-        submitted = st.form_submit_button("Login")
+        # Custom HTML for floating label inputs
+        st.markdown("""
+        <div class="floating-input-container">
+            <input type="text" class="floating-input" name="username" placeholder=" " required>
+            <label class="floating-label">Username</label>
+            <div class="input-icon">👤</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        username = st.text_input("Username", placeholder=" ", label_visibility="collapsed", key="username_input")
+
+        st.markdown("""
+        <div class="floating-input-container">
+            <input type="password" class="floating-input" name="password" placeholder=" " required>
+            <label class="floating-label">Password</label>
+            <div class="input-icon">🔒</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+        password = st.text_input("Password", type="password", placeholder=" ", label_visibility="collapsed",
+                                 key="password_input")
+
+        submitted = st.form_submit_button("Sign In")
 
         if submitted:
             if username == os.getenv("USERNAME") and password == os.getenv("PASSWORD"):

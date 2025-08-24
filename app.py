@@ -13,7 +13,8 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
-import hashlib 
+import hashlib
+from functools import wraps
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
@@ -435,7 +436,55 @@ def get_stations_by_access(access_choice: str):
         return cached_station_data(access_choice)
 
 
-@st.cache_data
+
+
+# Disable Arrow serialization by default to prevent mixed object type crashes
+os.environ["STREAMLIT_DATAFRAME_USE_ARROW"] = "0"
+
+
+def safe_cache_data(*args, **kwargs):
+    """
+    A drop-in replacement for st.cache_data that handles DataFrames with unhashable types.
+
+    Features:
+    - Overrides the default hash function for Pandas DataFrames
+    - By default, hashes only DataFrame shape + column names (not contents)
+    - Allows passing extra hash_funcs like st.cache_data
+    - Automatically disables Arrow serialization
+    """
+    # Extract hash_funcs from kwargs or use empty dict
+    hash_funcs = kwargs.pop('hash_funcs', {})
+
+    # Define our custom DataFrame hash function
+    def _hash_dataframe(df):
+        """Hash a DataFrame based on its shape and column names only"""
+        try:
+            # Try to use the default hash if possible
+            return pd.util.hash_pandas_object(df).values.tobytes()
+        except (TypeError, ValueError):
+            # Fall back to shape and column names for unhashable DataFrames
+            return (df.shape, tuple(df.columns))
+
+    # Add our custom hash function for DataFrames if not already provided
+    if pd.DataFrame not in hash_funcs:
+        hash_funcs[pd.DataFrame] = _hash_dataframe
+
+    # Add support for other common unhashable types
+    if list not in hash_funcs:
+        hash_funcs[list] = lambda x: str(x)
+    if dict not in hash_funcs:
+        hash_funcs[dict] = lambda x: str(sorted(x.items())) if x else "empty_dict"
+    if set not in hash_funcs:
+        hash_funcs[set] = lambda x: str(sorted(x)) if x else "empty_set"
+    if tuple not in hash_funcs:
+        hash_funcs[tuple] = lambda x: str(x)
+
+    # Pass the updated hash_funcs to st.cache_data
+    return st.cache_data(*args, **kwargs, hash_funcs=hash_funcs)
+
+
+# Example usage in your code:
+@safe_cache_data
 def get_summary(df):
     # Create a copy with lists instead of tuples for exploding
     df_with_lists = df.copy()
@@ -446,6 +495,12 @@ def get_summary(df):
     pivot = pivot[pivot.index.notna()].sort_index()
     return pivot.reset_index()
 
+
+# You can also pass custom hash functions if needed
+@safe_cache_data(hash_funcs={pd.Series: lambda x: (len(x), tuple(x.dtype))})
+def my_function_with_series(data):
+    # Your function logic here
+    return processed_data
 
 def extract_parameter_metadata(archive_counts):
     recs = []

@@ -13,6 +13,8 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
+import hashlib
+from functools import wraps
 
 # Initialize session state for authentication
 if 'authenticated' not in st.session_state:
@@ -340,8 +342,37 @@ def reverse_geocode_cached(lat, lon):
     return reverse_geocode.search([(lat, lon)])[0]['country']
 
 
-@st.cache_data(show_spinner="Fetching station data…")
-def get_stations_by_access(access_choice: str):
+# Custom hash function for DataFrames with unhashable types
+def hash_dataframe(df):
+    """Create a hash for a DataFrame that may contain unhashable types"""
+    # Convert any unhashable types to hashable representations
+    df_copy = df.copy()
+
+    # Convert lists and tuples to strings for hashing
+    for col in df_copy.columns:
+        if df_copy[col].apply(lambda x: isinstance(x, (list, tuple))).any():
+            df_copy[col] = df_copy[col].apply(lambda x: str(x) if isinstance(x, (list, tuple)) else x)
+
+    # Create a hash of the DataFrame's content
+    return hashlib.md5(pd.util.hash_pandas_object(df_copy).values.tobytes()).hexdigest()
+
+
+# Custom caching implementation for DataFrames with unhashable types
+def cached_station_data(access_choice):
+    """Custom caching implementation for station data"""
+    cache_key = f"station_data_{access_choice}"
+
+    # Check if we have a cached version
+    if cache_key in st.session_state:
+        cached_data = st.session_state[cache_key]
+        cached_hash = st.session_state.get(f"{cache_key}_hash")
+
+        # Verify the hash to ensure data integrity
+        current_hash = hash_dataframe(cached_data[0])
+        if cached_hash == current_hash:
+            return cached_data
+
+    # If not cached or hash mismatch, fetch new data
     creds = {
         "Internal": (CLIENT_ID_INTERNAL, CLIENT_SECRET_INTERNAL),
         "Core": (CLIENT_ID_CORE, CLIENT_SECRET_CORE),
@@ -391,12 +422,71 @@ def get_stations_by_access(access_choice: str):
 
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
+
+    # Cache the result
+    st.session_state[cache_key] = (df, token)
+    st.session_state[f"{cache_key}_hash"] = hash_dataframe(df)
+
     return df, token
 
 
-@st.cache_data
+# Use the custom caching function instead of st.cache_data
+def get_stations_by_access(access_choice: str):
+    with st.spinner("Fetching station data…"):
+        return cached_station_data(access_choice)
+
+
+
+
+# Disable Arrow serialization by default to prevent mixed object type crashes
+os.environ["STREAMLIT_DATAFRAME_USE_ARROW"] = "0"
+
+
+def safe_cache_data(*args, **kwargs):
+    """
+    A drop-in replacement for st.cache_data that handles DataFrames with unhashable types.
+
+    Features:
+    - Overrides the default hash function for Pandas DataFrames
+    - By default, hashes only DataFrame shape + column names (not contents)
+    - Allows passing extra hash_funcs like st.cache_data
+    - Automatically disables Arrow serialization
+    """
+    # Extract hash_funcs from kwargs or use empty dict
+    hash_funcs = kwargs.pop('hash_funcs', {})
+
+    # Define our custom DataFrame hash function
+    def _hash_dataframe(df):
+        """Hash a DataFrame based on its shape and column names only"""
+        try:
+            # Try to use the default hash if possible
+            return pd.util.hash_pandas_object(df).values.tobytes()
+        except (TypeError, ValueError):
+            # Fall back to shape and column names for unhashable DataFrames
+            return (df.shape, tuple(df.columns))
+
+    # Add our custom hash function for DataFrames if not already provided
+    if pd.DataFrame not in hash_funcs:
+        hash_funcs[pd.DataFrame] = _hash_dataframe
+
+    # Add support for other common unhashable types
+    if list not in hash_funcs:
+        hash_funcs[list] = lambda x: str(x)
+    if dict not in hash_funcs:
+        hash_funcs[dict] = lambda x: str(sorted(x.items())) if x else "empty_dict"
+    if set not in hash_funcs:
+        hash_funcs[set] = lambda x: str(sorted(x)) if x else "empty_set"
+    if tuple not in hash_funcs:
+        hash_funcs[tuple] = lambda x: str(x)
+
+    # Pass the updated hash_funcs to st.cache_data
+    return st.cache_data(*args, **kwargs, hash_funcs=hash_funcs)
+
+
+# Example usage in your code:
+@safe_cache_data
 def get_summary(df):
-    # Convert tuples back to lists for exploding
+    # Create a copy with lists instead of tuples for exploding
     df_with_lists = df.copy()
     df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(list)
     expl = df_with_lists[['Country', 'obsTypes']].explode('obsTypes')
@@ -405,6 +495,12 @@ def get_summary(df):
     pivot = pivot[pivot.index.notna()].sort_index()
     return pivot.reset_index()
 
+
+# You can also pass custom hash functions if needed
+@safe_cache_data(hash_funcs={pd.Series: lambda x: (len(x), tuple(x.dtype))})
+def my_function_with_series(data):
+    # Your function logic here
+    return processed_data
 
 def extract_parameter_metadata(archive_counts):
     recs = []
@@ -1080,17 +1176,17 @@ def show_dashboard(df, token):
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
 
-    # Convert tuples to strings for display
+    # Convert tuples to strings for display - FIXED SettingWithCopyWarning
     for col in raw.columns:
         if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
-            raw[col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
+            raw.loc[:, col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
 
     results = drop_blank_columns(raw)
 
     # Move station details to sidebar
     with st.sidebar:
 
-        st.markdown("<div class='panel-header'>🔍 Station Details</div>", unsafe_allow_html=True)
+        st.markdown("<div class='panel-header'>Station Details</div>", unsafe_allow_html=True)
 
         md = {}  # Initialize empty station metadata
         sel = None
@@ -1371,6 +1467,7 @@ def top_nav_bar():
                     st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
+
 
 def main():
     st.set_page_config(

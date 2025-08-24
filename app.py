@@ -1020,11 +1020,15 @@ def show_dashboard(df, token):
     with col4:
         # Convert tuples to lists for the multiselect options
         obs_types = sorted({o for row in df['obsTypes'] for o in row})
+        # Add the new combined option
+        obs_types_with_combined = sorted(set(obs_types) | {"SYNOP & METAR"})
+
         sel_obs = st.multiselect(
             "Filter by Observation Types:",
-            options=obs_types,
+            options=obs_types_with_combined,
             help="Show only stations reporting selected observation types"
         )
+
     with col5:
         # Convert tuples to lists for the multiselect options
         params = sorted({p for row in df['parameters'] for p in row})
@@ -1063,8 +1067,17 @@ def show_dashboard(df, token):
             st.warning("No stations in the selected countries")
             filters_applied = True
     if sel_obs:
-        # Handle tuples in filter
-        mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
+        # Handle the special "SYNOP & METAR" case
+        if "SYNOP & METAR" in sel_obs:
+            # Remove the special option and add the individual types
+            sel_obs = [o for o in sel_obs if o != "SYNOP & METAR"]
+            sel_obs.extend(["SYNOP", "ISD", "METAR"])
+            # Use any instead of all to match stations with any of these types
+            mask = fdf['obsTypes'].apply(lambda tup: any(o in tup for o in ["SYNOP", "ISD", "METAR"]))
+        else:
+            # Original logic for other selections
+            mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
+
         if mask.any():
             fdf = fdf[mask]
             show = True
@@ -1186,7 +1199,7 @@ def show_dashboard(df, token):
     # Move station details to sidebar
     with st.sidebar:
 
-        st.markdown("<div class='panel-header'>🔍 Station Details</div>", unsafe_allow_html=True)
+        st.markdown("<div class='panel-header'>Station Details</div>", unsafe_allow_html=True)
 
         md = {}  # Initialize empty station metadata
         sel = None

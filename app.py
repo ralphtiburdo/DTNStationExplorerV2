@@ -27,62 +27,10 @@ def login():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
-        /* Hide Streamlit's default elements that might cause unwanted rectangles */
-        .stApp > header {
-            display: none !important;
-        }
-
-        .stApp > div:first-child {
-            padding-top: 0 !important;
-        }
-
-        /* Hide any empty containers or divs that might show up */
-        .stMarkdown:empty,
-        .stContainer:empty,
-        div[data-testid="stMarkdownContainer"]:empty,
-        .element-container:empty,
-        .stVerticalBlock > div:empty {
-            display: none !important;
-        }
-
-        /* Aggressively hide all potential empty elements */
-        div:empty:not(.login-container):not(.stTextInput):not(.stButton) {
-            display: none !important;
-        }
-
-        /* Remove all margins and padding from main containers */
-        .main .block-container {
-            padding-top: 0 !important;
-            padding-bottom: 0 !important;
-            padding-left: 1rem !important;
-            padding-right: 1rem !important;
-            margin: 0 !important;
-            min-height: 100vh !important;
-            display: flex !important;
-            align-items: center !important;
-            justify-content: center !important;
-        }
-
-        /* Remove spacing from all streamlit containers */
-        .stVerticalBlock {
-            gap: 0 !important;
-            width: 100% !important;
-        }
-
-        .element-container {
-            margin: 0 !important;
-        }
-
-        /* Force the body to have no extra spacing */
-        .stApp {
-            padding: 0 !important;
-            margin: 0 !important;
-        }
-
-        /* Main container styling - remove top margin since parent is flex centered */
+        /* Main container styling */
         .login-container {
             max-width: 420px;
-            margin: 0 auto;
+            margin: 80px auto;
             padding: 40px;
             border-radius: 24px;
             background: rgba(255, 255, 255, 0.95);
@@ -92,7 +40,34 @@ def login():
                 0 2px 8px rgba(0, 0, 0, 0.05),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Animated background gradient */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, 
+                rgba(0, 114, 181, 0.1) 0%, 
+                rgba(0, 169, 157, 0.1) 25%,
+                rgba(138, 43, 226, 0.1) 50%,
+                rgba(255, 20, 147, 0.1) 75%,
+                rgba(0, 114, 181, 0.1) 100%);
+            animation: gradientShift 8s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
         }
 
         /* Title styling */
@@ -129,12 +104,13 @@ def login():
 
         /* Streamlit input container styling */
         .stTextInput {
+            position: relative;
             margin-bottom: 24px;
         }
 
         /* Style the input field */
         .stTextInput > div > div > input {
-            padding: 16px !important;
+            padding: 20px 16px 8px 16px !important;
             border: 2px solid rgba(0, 114, 181, 0.2) !important;
             border-radius: 12px !important;
             background: rgba(255, 255, 255, 0.8) !important;
@@ -156,20 +132,41 @@ def login():
             outline: none !important;
         }
 
-        /* Style placeholders */
-        .stTextInput > div > div > input::placeholder {
-            color: rgba(0, 114, 181, 0.6) !important;
-            font-weight: 500 !important;
-            transition: opacity 0.3s ease !important;
-        }
-
-        .stTextInput > div > div > input:focus::placeholder {
-            opacity: 0.3 !important;
-        }
-
-        /* Hide the default Streamlit labels */
+        /* Style the label as floating label */
         .stTextInput > label {
-            display: none !important;
+            position: absolute !important;
+            left: 16px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            background: linear-gradient(135deg, #0072b5, #00a99d) !important;
+            background-clip: text !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            pointer-events: none !important;
+            z-index: 10 !important;
+            margin: 0 !important;
+        }
+
+        /* Move label up when input is focused or has value */
+        .stTextInput > div > div > input:focus ~ label,
+        .stTextInput > div > div > input:not([value=""]) ~ label {
+            top: 12px !important;
+            transform: translateY(0) !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
+        }
+
+        /* Alternative approach - move label when input has content */
+        .stTextInput:has(input:not(:placeholder-shown)) > label {
+            top: 12px !important;
+            transform: translateY(0) !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
         }
 
         /* Login button styling */
@@ -289,14 +286,14 @@ def login():
     </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
+    st.markdown('<div class="login-title">DTN Station Explorer</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        # Username field with placeholder
-        username = st.text_input("Username", placeholder="Username", key="username_input", label_visibility="collapsed")
+        # Username field with floating label effect
+        username = st.text_input("Username", placeholder=" ", key="username_input")
 
-        # Password field with placeholder
-        password = st.text_input("Password", type="password", placeholder="Password", key="password_input",
-                                 label_visibility="collapsed")
+        # Password field with floating label effect
+        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
 
         submitted = st.form_submit_button("Sign In")
 

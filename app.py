@@ -746,6 +746,13 @@ def show_dashboard(df, token):
     filters_applied = False
     show = False
 
+    # Update the filter processing section in show_dashboard function
+
+    # Process filters
+    fdf = df.copy()
+    filters_applied = False
+    show = False
+
     if search.strip():
         terms = [t.strip().lower() for t in re.split(r"[,\s]+", search) if t.strip()]
         mask = fdf[['stationCode', 'icao', 'wmo', 'mgID', 'madisId', 'iata', 'faa', 'name', 'davisId', 'dtnLegacyID',
@@ -790,7 +797,7 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations have all the selected parameters")
             filters_applied = True
-            
+
     # Load summary data
     summary = get_summary(df)
     summary_tbl = summary.drop(columns=['obsTypes'], errors='ignore').rename(columns={'Total': 'Station Count'})

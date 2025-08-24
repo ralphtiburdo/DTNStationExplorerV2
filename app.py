@@ -27,6 +27,33 @@ def login():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+        /* Hide Streamlit's default elements that might cause unwanted rectangles */
+        .stApp > header {
+            display: none !important;
+        }
+
+        .stApp > div:first-child {
+            padding-top: 0 !important;
+        }
+
+        /* Hide any empty containers or divs that might show up */
+        .stMarkdown:empty,
+        .stContainer:empty,
+        div[data-testid="stMarkdownContainer"]:empty {
+            display: none !important;
+        }
+
+        /* Ensure clean full-page layout */
+        .stApp {
+            background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%) !important;
+        }
+
+        /* Hide the main container padding */
+        .main .block-container {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
         /* Main container styling */
         .login-container {
             max-width: 420px;

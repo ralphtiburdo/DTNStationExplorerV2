@@ -1193,10 +1193,15 @@ def show_dashboard(df, token):
     # Convert all columns to string to avoid Arrow serialization issues
     for col in raw.columns:
         if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
-            raw.loc[:, col] = raw[col].apply(lambda x: ', '.join(map(str, x)) if isinstance(x, tuple) else str(x))
+            raw.loc[:, col] = raw[col].apply(lambda x: ', '.join(map(str, x)) if isinstance(x, tuple) else x)
         else:
-            # Convert all other object columns to string
-            raw.loc[:, col] = raw[col].astype(str)
+            # For numeric columns, convert to string more carefully
+            if pd.api.types.is_numeric_dtype(raw[col]):
+                # Convert NaN values to empty string first, then convert to string
+                raw.loc[:, col] = raw[col].fillna('').astype(str)
+            else:
+                # For other object columns, convert directly to string
+                raw.loc[:, col] = raw[col].astype(str)
 
     results = drop_blank_columns(raw)
 

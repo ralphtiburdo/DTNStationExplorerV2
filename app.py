@@ -107,18 +107,12 @@ def login():
             to { transform: translateX(-50%) scaleX(1); }
         }
 
-        /* Input container styling */
+        /* Input field container styling */
         .stTextInput {
             position: relative !important;
             margin-bottom: 25px !important;
         }
 
-        /* Hide default labels */
-        .stTextInput > label {
-            display: none !important;
-        }
-
-        /* Input field styling */
         .stTextInput > div > div {
             position: relative !important;
         }
@@ -127,14 +121,13 @@ def login():
             background: rgba(255, 255, 255, 0.8) !important;
             border: 2px solid rgba(0, 114, 181, 0.1) !important;
             border-radius: 12px !important;
-            padding: 20px 18px 8px 18px !important;
+            padding: 20px 18px 14px 18px !important;
             font-size: 15px !important;
             font-family: 'Inter', sans-serif !important;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
             backdrop-filter: blur(10px) !important;
             color: #2d3748 !important;
             font-weight: 400 !important;
-            width: 100% !important;
         }
 
         .stTextInput > div > div > input:focus {
@@ -147,9 +140,13 @@ def login():
             outline: none !important;
         }
 
-        /* Remove default placeholder */
         .stTextInput > div > div > input::placeholder {
             color: transparent !important;
+        }
+
+        /* Hide default Streamlit labels */
+        .stTextInput > label {
+            display: none !important;
         }
 
         /* Floating label styling */
@@ -165,30 +162,30 @@ def login():
             font-family: 'Inter', sans-serif;
             pointer-events: none;
             transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            background: transparent;
             z-index: 1;
+            background: transparent;
         }
 
-        /* Floating label animation - when focused or has value */
         .stTextInput > div > div:focus-within::before,
-        .stTextInput > div > div:has(input:not(:placeholder-shown))::before {
+        .stTextInput > div > div > input:not(:placeholder-shown) + *::before {
             top: 8px;
             left: 14px;
             font-size: 12px;
-            font-weight: 500;
             color: #0072b5;
+            font-weight: 500;
             transform: translateY(0);
-            background: linear-gradient(to right, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.9) 100%);
+            background: rgba(255, 255, 255, 0.9);
             padding: 0 4px;
+            border-radius: 4px;
         }
 
-        /* Add labels with JavaScript-like approach using CSS */
+        /* Custom floating labels using JavaScript-like approach with CSS */
         .stTextInput:nth-of-type(1) > div > div::before {
-            content: 'Username';
+            content: "Username";
         }
 
         .stTextInput:nth-of-type(2) > div > div::before {
-            content: 'Password';
+            content: "Password";
         }
 
         /* Button styling */
@@ -318,8 +315,8 @@ def login():
     st.markdown('<div class="login-title">DTN Station Explorer Login</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        username = st.text_input("", placeholder="", key="username_input")
-        password = st.text_input("", type="password", placeholder="", key="password_input")
+        username = st.text_input("Username", placeholder=" ", key="username_input")
+        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
         submitted = st.form_submit_button("Login")
 
         if submitted:

@@ -54,14 +54,19 @@ def login():
         .main .block-container {
             padding-top: 0 !important;
             padding-bottom: 0 !important;
-            padding-left: 0 !important;
-            padding-right: 0 !important;
+            padding-left: 1rem !important;
+            padding-right: 1rem !important;
             margin: 0 !important;
+            min-height: 100vh !important;
+            display: flex !important;
+            align-items: center !important;
+            justify-content: center !important;
         }
 
         /* Remove spacing from all streamlit containers */
         .stVerticalBlock {
             gap: 0 !important;
+            width: 100% !important;
         }
 
         .element-container {
@@ -74,10 +79,10 @@ def login():
             margin: 0 !important;
         }
 
-        /* Main container styling - positioned absolutely to avoid any layout issues */
+        /* Main container styling - remove top margin since parent is flex centered */
         .login-container {
             max-width: 420px;
-            margin: 0;
+            margin: 0 auto;
             padding: 40px;
             border-radius: 24px;
             background: rgba(255, 255, 255, 0.95);
@@ -88,11 +93,6 @@ def login():
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.2);
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
-            position: fixed;
-            top: 50%;
-            left: 50%;
-            transform: translate(-50%, -50%);
-            z-index: 1000;
         }
 
         /* Title styling */

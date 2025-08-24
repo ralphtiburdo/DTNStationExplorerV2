@@ -305,7 +305,6 @@ def login():
         }
     </style>""", unsafe_allow_html=True)
 
-    st.markdown('<div class极地战斧
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
 
     with st.form("login_form"):
@@ -316,7 +315,6 @@ def login():
         password = st.text_input("Password", type="password", placeholder="Password", key="password_input",
                                  label_visibility="collapsed")
 
-        submitted = st.form极地战斧
         submitted = st.form_submit_button("Sign In")
 
         if submitted:

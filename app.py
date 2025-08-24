@@ -313,7 +313,6 @@ def login():
     </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">DTN Station Explorer</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
         # Username field with floating label effect

@@ -13,22 +13,9 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
-import redis
-import json
-from typing import Dict, List, Tuple, Optional, Any
-import hashlib
-import time
-import pickle
 
-load_dotenv()
+load_dotenv()  # <-- this makes os.getenv pick up your .env
 
-# Redis configuration
-REDIS_HOST = os.getenv("REDIS_HOST", "localhost")
-REDIS_PORT = int(os.getenv("REDIS_PORT", 6379))
-REDIS_PASSWORD = os.getenv("REDIS_PASSWORD", None)
-REDIS_DB = int(os.getenv("REDIS_DB", 0))
-
-# API credentials
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
 CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")
 CLIENT_ID_CORE = os.getenv("CLIENT_ID_CORE")
@@ -36,126 +23,17 @@ CLIENT_SECRET_CORE = os.getenv("CLIENT_SECRET_CORE")
 CLIENT_ID_PLUS = os.getenv("CLIENT_ID_PLUS")
 CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS")
 
-# Initialize Redis connection
-try:
-    redis_client = redis.Redis(
-        host=REDIS_HOST,
-        port=REDIS_PORT,
-        password=REDIS_PASSWORD,
-        db=REDIS_DB,
-        decode_responses=True,
-        socket_timeout=5,  # Add timeout
-        socket_connect_timeout=5  # Add connection timeout
-    )
-    redis_client.ping()  # Test connection
-except (redis.ConnectionError, redis.TimeoutError) as e:
-    redis_client = None
-    logging.warning(f"Redis connection failed: {e}. Caching will be disabled.")
-
-# Cache configuration
-CACHE_TTL = 3600  # 1 hour in seconds
-TOKEN_CACHE_TTL = 3500  # 55 minutes (tokens typically expire in 1 hour)
-
-
-def get_redis_key(prefix: str, key_parts: List[Any]) -> str:
-    """Generate a consistent Redis key from parts"""
-    key_str = ":".join(str(part) for part in key_parts)
-    return f"{prefix}:{hashlib.md5(key_str.encode()).hexdigest()}"
-
-
-def cache_response(key: str, data: Any, ttl: int = CACHE_TTL) -> None:
-    """Cache data in Redis with TTL"""
-    if redis_client is None:
-        return
-
-    try:
-        if isinstance(data, pd.DataFrame):
-            # Convert DataFrame to JSON for storage
-            redis_client.setex(key, ttl, data.to_json(orient='split'))
-        else:
-            redis_client.setex(key, ttl, json.dumps(data))
-    except redis.RedisError as e:
-        logging.error(f"Redis cache error: {e}")
-
-
-def get_cached_response(key: str) -> Optional[Any]:
-    """Retrieve cached data from Redis"""
-    if redis_client is None:
-        return None
-
-    try:
-        cached_data = redis_client.get(key)
-        if cached_data:
-            # Try to parse as DataFrame first, then as JSON
-            try:
-                return pd.read_json(io.StringIO(cached_data), orient='split')
-            except ValueError:
-                return json.loads(cached_data)
-    except redis.RedisError as e:
-        logging.error(f"Redis cache error: {e}")
-
-    return None
-
-
-def clear_cache_pattern(pattern: str) -> int:
-    """Clear cache entries matching a pattern"""
-    if redis_client is None:
-        return 0
-
-    try:
-        keys = redis_client.keys(pattern)
-        if keys:
-            return redis_client.delete(*keys)
-        return 0
-    except redis.RedisError as e:
-        logging.error(f"Redis cache error: {e}")
-        return 0
-
-
-# Custom hash function for DataFrames with list columns
-def hash_dataframe(df: pd.DataFrame) -> bytes:
-    """Custom hash function for DataFrames that converts lists to tuples"""
-    # Create a copy to avoid modifying the original
-    df_copy = df.copy()
-
-    # Convert list columns to tuples (which are hashable)
-    for col in df_copy.columns:
-        if df_copy[col].apply(lambda x: isinstance(x, list)).any():
-            df_copy[col] = df_copy[col].apply(
-                lambda x: tuple(x) if isinstance(x, list) else x
-            )
-
-    # Use pandas' built-in hash function
-    return pickle.dumps(pd.util.hash_pandas_object(df_copy).sum())
-
 
 # --- Helper functions ---
 def get_token(client_id, client_secret):
-    # Check cache first
-    cache_key = get_redis_key("token", [client_id])
-    cached_token = get_cached_response(cache_key)
-    if cached_token:
-        return cached_token
-
     url = 'https://api.auth.dtn.com/v1/tokens/authorize'
     payload = {"grant_type": "client_credentials", "client_id": client_id,
                "client_secret": client_secret, "audience": "https://weather.api.dtn.com/observations"}
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-
-    try:
-        resp = requests.post(url, json=payload, headers=headers, timeout=10)
-        resp.raise_for_status()
-        data = resp.json()
-        token = (data.get('data') or data).get('access_token')
-
-        # Cache the token
-        if token:
-            cache_response(cache_key, token, TOKEN_CACHE_TTL)
-
-        return token
-    except requests.exceptions.RequestException as e:
-        logging.error(f"Token request failed: {e}")
-        raise
+    resp = requests.post(url, json=payload, headers=headers)
+    resp.raise_for_status()
+    data = resp.json()
+    return (data.get('data') or data).get('access_token')
 
 
 @lru_cache(maxsize=None)
@@ -163,22 +41,8 @@ def reverse_geocode_cached(lat, lon):
     return reverse_geocode.search([(lat, lon)])[0]['country']
 
 
-@st.cache_data(show_spinner="Fetching station data…", hash_funcs={pd.DataFrame: hash_dataframe})
+@st.cache_data(show_spinner="Fetching station data…")
 def get_stations_by_access(access_choice: str):
-    # Check cache first
-    cache_key = get_redis_key("stations", [access_choice])
-    cached_data = get_cached_response(cache_key)
-    if cached_data is not None:
-        # If we have cached data, we still need a token for individual station requests
-        creds = {
-            "Internal": (CLIENT_ID_INTERNAL, CLIENT_SECRET_INTERNAL),
-            "Core": (CLIENT_ID_CORE, CLIENT_SECRET_CORE),
-            "Plus": (CLIENT_ID_PLUS, CLIENT_SECRET_PLUS),
-        }
-        client_id, client_secret = creds.get(access_choice, creds["Internal"])
-        token = get_token(client_id, client_secret)
-        return cached_data, token
-
     creds = {
         "Internal": (CLIENT_ID_INTERNAL, CLIENT_SECRET_INTERNAL),
         "Core": (CLIENT_ID_CORE, CLIENT_SECRET_CORE),
@@ -186,50 +50,14 @@ def get_stations_by_access(access_choice: str):
     }
     client_id, client_secret = creds.get(access_choice, creds["Internal"])
     token = get_token(client_id, client_secret)
-
     url = 'https://obs.api.dtn.com/v1/observations/stations'
-
-    # Use a session for connection pooling
-    with requests.Session() as session:
-        session.headers.update({"Authorization": f"Bearer {token}"})
-
-        # Add retry mechanism
-        for attempt in range(3):
-            try:
-                resp = session.get(url, params={
-                    'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
-                    'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
-                }, timeout=30)
-                resp.raise_for_status()
-                break
-            except requests.exceptions.RequestException as e:
-                if attempt == 2:  # Final attempt
-                    raise
-                sleep(2 ** attempt)  # Exponential backoff
-        else:
-            resp = session.get(url, params={
-                'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
-                'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
-            }, timeout=30)
-            resp.raise_for_status()
-
+    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
+        'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
+        'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
+    })
+    resp.raise_for_status()
     df = pd.json_normalize(resp.json())
-
-    # Ensure all string columns are properly formatted
-    string_columns = ['name', 'stationCode', 'Country', 'mgID', 'wmo', 'icao',
-                      'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId',
-                      'dtnLegacyID', 'ghcndID']
-
-    for col in string_columns:
-        if col in df.columns:
-            df[col] = df[col].astype(str).fillna("")
-
-    # Parallelize reverse geocoding for better performance
-    if len(df) > 0:
-        coordinates = list(zip(df.latitude, df.longitude))
-        countries = reverse_geocode.search(coordinates)
-        df['Country'] = [c['country'] for c in countries]
-
+    df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
                'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
@@ -237,19 +65,18 @@ def get_stations_by_access(access_choice: str):
 
     # Create new columns with default empty string
     for new_col in tag_map.values():
-        if new_col not in df.columns:
-            df[new_col] = ""
+        df[new_col] = ""
 
     # Fill new columns from tags where available
     for old, new in tag_map.items():
         if old in df.columns:
-            df[new] = df[old].fillna("").astype(str)
+            df[new] = df[old].fillna("")
 
     # Drop original tag columns
     df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
 
     # Handle list-type columns safely
-    df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("").astype(str)
+    df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
     df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(
         lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
     df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(
@@ -257,21 +84,12 @@ def get_stations_by_access(access_choice: str):
 
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
-
-    # Cache the station data
-    cache_response(cache_key, df)
-
     return df, token
 
 
-@st.cache_data(hash_funcs={pd.DataFrame: hash_dataframe})
+@st.cache_data
 def get_summary(df):
-    # Ensure all data is properly formatted
-    df_copy = df.copy()
-    df_copy['Country'] = df_copy['Country'].astype(str)
-    df_copy['obsTypes'] = df_copy['obsTypes'].apply(lambda x: x if isinstance(x, list) else [])
-
-    expl = df_copy[['Country', 'obsTypes']].explode('obsTypes')
+    expl = df[['Country', 'obsTypes']].explode('obsTypes')
     pivot = expl.pivot_table(index='Country', columns='obsTypes', aggfunc='size', fill_value=0)
     pivot['Total'] = pivot.sum(axis=1)
     pivot = pivot[pivot.index.notna()].sort_index()
@@ -355,37 +173,18 @@ def drop_blank_columns(df):
     return df.loc[:, df.apply(lambda col: col.replace("", pd.NA).dropna().astype(str).str.strip().ne("").any())]
 
 
-def fetch_station_metadata(code, token, retries=5, status_placeholder=None):
-    # Check cache first
-    cache_key = get_redis_key("station_meta", [code])
-    cached_data = get_cached_response(cache_key)
-    if cached_data is not None:
-        return cached_data
-
+def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
     url = "https://obs.api.dtn.com/v2/observations/stations"
     params = {"by": "stationCodes", "stationCodes": code, "isArchive": "true", "archiveCounts": "true"}
-
     for attempt in range(retries):
         try:
             if attempt > 0 and status_placeholder:
                 status_placeholder.warning(f"Retrying... Attempt {attempt + 1} of {retries}")
-
-            # Use session for connection reuse with increased timeout
-            with requests.Session() as session:
-                session.headers.update({"Authorization": f"Bearer {token}"})
-                resp = session.get(url, params=params, timeout=30)  # Increased timeout
-                resp.raise_for_status()
-
-            if status_placeholder:
-                status_placeholder.empty()
-
+            resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=20)
+            resp.raise_for_status()
+            if status_placeholder: status_placeholder.empty()
             feats = resp.json().get("features", [])
-            result = feats[0] if feats else {}
-
-            # Cache the result
-            cache_response(cache_key, result)
-
-            return result
+            return feats[0] if feats else {}
         except Exception as e:
             logging.warning(f"Retry {attempt + 1} failed: {e}")
             sleep(2 ** attempt)
@@ -740,27 +539,6 @@ def show_dashboard(df, token):
             margin-bottom: 10px;
         }
 
-        /* Cache status indicator */
-        .cache-indicator {
-            display: inline-block;
-            padding: 2px 8px;
-            border-radius: 12px;
-            font-size: 0.8rem;
-            margin-left: 10px;
-        }
-        .cache-hit {
-            background-color: #d4edda;
-            color: #155724;
-        }
-        .cache-miss {
-            background-color: #f8d7da;
-            color: #721c24;
-        }
-        .cache-disabled {
-            background-color: #e2e3e5;
-            color: #383d41;
-        }
-
     </style>
     """, unsafe_allow_html=True)
 
@@ -813,42 +591,6 @@ def show_dashboard(df, token):
             }
         </style>
         """, unsafe_allow_html=True)
-
-    # Cache status indicator
-    cache_status = "disabled" if redis_client is None else st.session_state.get('cache_status', 'miss')
-    cache_class = f"cache-{cache_status}"
-    cache_text = "Cache: " + {
-        'hit': 'HIT',
-        'miss': 'MISS',
-        'disabled': 'DISABLED'
-    }[cache_status]
-
-    st.sidebar.markdown(f"""
-    <div style="margin-bottom: 15px;">
-        <span class="cache-indicator {cache_class}">{cache_text}</span>
-    </div>
-    """, unsafe_allow_html=True)
-
-    # Cache management in sidebar
-    with st.sidebar.expander("Cache Management"):
-        st.info("Manage cached data to improve performance")
-
-        col1, col2 = st.columns(2)
-        with col1:
-            if st.button("Clear All Cache", use_container_width=True):
-                cleared = clear_cache_pattern("*")
-                st.success(f"Cleared {cleared} cache entries")
-                st.session_state.cache_status = 'miss'
-                st.rerun()
-
-        with col2:
-            if st.button("Refresh Data", use_container_width=True):
-                # Clear station data cache for current access level
-                pattern = get_redis_key("stations", [st.session_state.access_level])[:-32] + "*"
-                cleared = clear_cache_pattern(pattern)
-                st.success(f"Cleared {cleared} station cache entries")
-                st.session_state.cache_status = 'miss'
-                st.rerun()
 
     # Main content area - Filters and Summary
     st.markdown("<div class='filter-section'>", unsafe_allow_html=True)
@@ -1314,8 +1056,6 @@ def main():
         st.session_state.access_level = "Internal"
     if "dark_mode" not in st.session_state:
         st.session_state.dark_mode = False
-    if "cache_status" not in st.session_state:
-        st.session_state.cache_status = "miss"
 
     # Add the top navigation bar
     top_nav_bar()
@@ -1331,14 +1071,8 @@ def main():
 
     # Load data and show dashboard
     try:
-        with st.spinner("Loading station data..."):
-            df, token = get_stations_by_access(st.session_state.access_level)
-            # Update cache status
-            if redis_client is not None:
-                cache_key = get_redis_key("stations", [st.session_state.access_level])
-                if get_cached_response(cache_key) is not None:
-                    st.session_state.cache_status = "hit"
-            show_dashboard(df, token)
+        df, token = get_stations_by_access(st.session_state.access_level)
+        show_dashboard(df, token)
     except Exception as e:
         st.error(f"Could not load `{st.session_state.access_level}` data: {e}")
 

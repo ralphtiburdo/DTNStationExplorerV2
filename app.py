@@ -104,6 +104,22 @@ def reverse_geocode_cached(lat, lon):
     return reverse_geocode.search([(lat, lon)])[0]['country']
 
 
+# Add this function to handle conversion of all list-like objects
+def convert_all_lists_to_tuples(df):
+    """
+    Recursively convert all lists in the DataFrame to tuples for hashability
+    """
+    df = df.copy()
+    for col in df.columns:
+        # Check if column contains any list-like objects
+        if df[col].apply(lambda x: isinstance(x, (list, np.ndarray))).any():
+            df[col] = df[col].apply(
+                lambda x: tuple(x) if isinstance(x, (list, np.ndarray)) else x
+            )
+    return df
+
+
+# Update the get_stations_by_access function
 @st.cache_data(show_spinner="Fetching station data…")
 def get_stations_by_access(access_choice: str):
     creds = {
@@ -120,6 +136,10 @@ def get_stations_by_access(access_choice: str):
     })
     resp.raise_for_status()
     df = pd.json_normalize(resp.json())
+
+    # Convert all lists to tuples first
+    df = convert_all_lists_to_tuples(df)
+
     df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
@@ -143,7 +163,7 @@ def get_stations_by_access(access_choice: str):
 
     # Convert lists to tuples for hashability
     def safe_convert_to_tuple(x):
-        if isinstance(x, list):
+        if isinstance(x, (list, np.ndarray)):
             return tuple(x)
         elif pd.notna(x):
             return (str(x),)
@@ -155,14 +175,24 @@ def get_stations_by_access(access_choice: str):
 
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
+
+    # Final conversion to ensure all lists are tuples
+    df = convert_all_lists_to_tuples(df)
+
     return df, token
 
 
+# Update the get_summary function to handle tuples
 @st.cache_data
 def get_summary(df):
+    # Create a deep copy to avoid modifying the original DataFrame
+    df_with_lists = df.copy(deep=True)
+
     # Convert tuples back to lists for exploding
-    df_with_lists = df.copy()
-    df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(list)
+    df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(
+        lambda x: list(x) if isinstance(x, tuple) else x
+    )
+
     expl = df_with_lists[['Country', 'obsTypes']].explode('obsTypes')
     pivot = expl.pivot_table(index='Country', columns='obsTypes', aggfunc='size', fill_value=0)
     pivot['Total'] = pivot.sum(axis=1)

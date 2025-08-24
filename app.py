@@ -13,8 +13,11 @@ import numpy as np
 from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
+import plotly.express as px
+import plotly.graph_objects as go
+from plotly.subplots import make_subplots
 
-load_dotenv()  # <-- this makes os.getenv pick up your .env
+load_dotenv()
 
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
 CLIENT_SECRET_INTERNAL = os.getenv("CLIENT_SECRET_INTERNAL")
@@ -24,24 +27,32 @@ CLIENT_ID_PLUS = os.getenv("CLIENT_ID_PLUS")
 CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS")
 
 
-# --- Helper functions ---
+# --- Enhanced Helper functions ---
+@st.cache_data(ttl=3600)  # Cache tokens for 1 hour
 def get_token(client_id, client_secret):
     url = 'https://api.auth.dtn.com/v1/tokens/authorize'
     payload = {"grant_type": "client_credentials", "client_id": client_id,
                "client_secret": client_secret, "audience": "https://weather.api.dtn.com/observations"}
     headers = {'Accept': 'application/json', 'Content-Type': 'application/json'}
-    resp = requests.post(url, json=payload, headers=headers)
-    resp.raise_for_status()
-    data = resp.json()
-    return (data.get('data') or data).get('access_token')
+    try:
+        resp = requests.post(url, json=payload, headers=headers, timeout=10)
+        resp.raise_for_status()
+        data = resp.json()
+        return (data.get('data') or data).get('access_token')
+    except requests.exceptions.RequestException as e:
+        st.error(f"Authentication failed: {str(e)}")
+        return None
 
 
 @lru_cache(maxsize=None)
 def reverse_geocode_cached(lat, lon):
-    return reverse_geocode.search([(lat, lon)])[0]['country']
+    try:
+        return reverse_geocode.search([(lat, lon)])[0]['country']
+    except:
+        return "Unknown"
 
 
-@st.cache_data(show_spinner="Fetching station data…")
+@st.cache_data(ttl=600, show_spinner="Fetching station data…")  # Cache for 10 minutes
 def get_stations_by_access(access_choice: str):
     creds = {
         "Internal": (CLIENT_ID_INTERNAL, CLIENT_SECRET_INTERNAL),
@@ -50,41 +61,56 @@ def get_stations_by_access(access_choice: str):
     }
     client_id, client_secret = creds.get(access_choice, creds["Internal"])
     token = get_token(client_id, client_secret)
+
+    if not token:
+        return pd.DataFrame(), None
+
     url = 'https://obs.api.dtn.com/v1/observations/stations'
-    resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
-        'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
-        'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
-    })
-    resp.raise_for_status()
-    df = pd.json_normalize(resp.json())
-    df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
-    tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
-               'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
-               'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
-               'tags.ghcndID': 'ghcndID'}
+    try:
+        resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
+            'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
+            'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
+        }, timeout=30)
+        resp.raise_for_status()
+        df = pd.json_normalize(resp.json())
 
-    # Create new columns with default empty string
-    for new_col in tag_map.values():
-        df[new_col] = ""
+        # Batch reverse geocoding for performance
+        unique_coords = df[['latitude', 'longitude']].drop_duplicates()
+        unique_coords['Country'] = unique_coords.apply(
+            lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1
+        )
+        df = df.merge(unique_coords, on=['latitude', 'longitude'], how='left')
 
-    # Fill new columns from tags where available
-    for old, new in tag_map.items():
-        if old in df.columns:
-            df[new] = df[old].fillna("")
+        tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
+                   'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
+                   'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
+                   'tags.ghcndID': 'ghcndID'}
 
-    # Drop original tag columns
-    df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
+        # Create new columns with default empty string
+        for new_col in tag_map.values():
+            df[new_col] = ""
 
-    # Handle list-type columns safely
-    df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
-    df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(
-        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
-    df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(
-        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
+        # Fill new columns from tags where available
+        for old, new in tag_map.items():
+            if old in df.columns:
+                df[new] = df[old].fillna("")
 
-    df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
-    df.reset_index(drop=True, inplace=True)
-    return df, token
+        # Drop original tag columns
+        df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
+
+        # Handle list-type columns safely
+        df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
+        df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(
+            lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
+        df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(
+            lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
+
+        df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
+        df.reset_index(drop=True, inplace=True)
+        return df, token
+    except requests.exceptions.RequestException as e:
+        st.error(f"Failed to fetch stations: {str(e)}")
+        return pd.DataFrame(), None
 
 
 @st.cache_data
@@ -110,90 +136,219 @@ def extract_parameter_metadata(archive_counts):
     return pd.DataFrame(recs).sort_values("Parameter")
 
 
-def generate_heatmap(archive_counts, param):
-    """Generate a heatmap visualization for parameter availability using gradient colors"""
-    # Get counts for the parameter
+def generate_heatmap_plotly(archive_counts, param):
+    """Generate an interactive heatmap using Plotly"""
     counts = archive_counts.get(param, {})
     if not counts:
-        return "<div>No data available</div>"
+        return None
 
-    # Extract all years and months
-    all_months = {}
-    min_year = float('inf')
-    max_year = 0
-    monthly_counts = []
+    # Extract data for heatmap
+    years = set()
+    months_data = []
 
     for month_key, count in counts.items():
         try:
             year, month = map(int, month_key.split('-'))
-            min_year = min(min_year, year)
-            max_year = max(max_year, year)
-            all_months[(year, month)] = count
-            monthly_counts.append(count)
+            years.add(year)
+            months_data.append({
+                "year": year,
+                "month": month,
+                "count": count,
+                "month_name": calendar.month_abbr[month],
+                "date": f"{calendar.month_abbr[month]} {year}"
+            })
         except:
             continue
 
-    if min_year == float('inf'):
-        return "<div>No valid data</div>"
+    if not months_data:
+        return None
 
-    # Find max count for normalization
-    max_count = max(monthly_counts) if monthly_counts else 1
+    # Create a DataFrame
+    df_heat = pd.DataFrame(months_data)
 
-    # Generate heatmap HTML in chronological order
-    html = ['<div class="heatmap-grid">']
+    # Pivot for heatmap
+    heatmap_data = df_heat.pivot_table(values='count', index='month', columns='year',
+                                       aggfunc='sum', fill_value=0)
 
-    # Create columns for each year
-    for year in range(min_year, max_year + 1):
-        for month in range(1, 13):
-            count = all_months.get((year, month), 0)
-            # Calculate percentage relative to max count
-            percentage = (count / max_count) * 100 if max_count > 0 else 0
+    # Create the heatmap
+    fig = px.imshow(
+        heatmap_data.values,
+        labels=dict(x="Year", y="Month", color="Observations"),
+        x=sorted(years),
+        y=[calendar.month_abbr[i] for i in range(1, 13)],
+        aspect="auto",
+        color_continuous_scale="Viridis"
+    )
 
-            # Determine gradient color based on percentage
-            # Red (low) to Green (high) gradient
-            if count == 0:
-                color = "#f0f0f0"  # Light gray for no data
-            else:
-                # Calculate hue: 0° (red) to 120° (green)
-                hue = 120 * (percentage / 100)
-                color = f"hsl({hue}, 100%, 45%)"
+    fig.update_layout(
+        title=f"Observation Frequency for {param}",
+        xaxis_nticks=len(years),
+        height=400
+    )
 
-            month_name = calendar.month_abbr[month]
-            tooltip = f"{month_name} {year}: {count} observations ({percentage:.1f}%)"
-            html.append(
-                f'<div class="heatmap-cell" title="{tooltip}" style="background-color: {color}">'
-                f'</div>'
-            )
-    html.append('</div>')
-
-    return "".join(html)
+    return fig
 
 
 def drop_blank_columns(df):
     return df.loc[:, df.apply(lambda col: col.replace("", pd.NA).dropna().astype(str).str.strip().ne("").any())]
 
 
-def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
+@st.cache_data(ttl=300, show_spinner=False)  # Cache metadata for 5 minutes
+def fetch_station_metadata(code, token, retries=5):
+    if not token:
+        return {}
+
     url = "https://obs.api.dtn.com/v2/observations/stations"
     params = {"by": "stationCodes", "stationCodes": code, "isArchive": "true", "archiveCounts": "true"}
+
     for attempt in range(retries):
         try:
-            if attempt > 0 and status_placeholder:
-                status_placeholder.warning(f"Retrying... Attempt {attempt + 1} of {retries}")
             resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params=params, timeout=20)
             resp.raise_for_status()
-            if status_placeholder: status_placeholder.empty()
             feats = resp.json().get("features", [])
             return feats[0] if feats else {}
         except Exception as e:
             logging.warning(f"Retry {attempt + 1} failed: {e}")
             sleep(2 ** attempt)
-            if attempt == retries - 1 and status_placeholder:
-                status_placeholder.error(f"Failed after {retries} retries.")
-                return {}
+
+    return {}
 
 
-# --- UI and main logic ---
+def create_station_map(fdf, selected_station=None):
+    """Create an interactive map with stations"""
+    if fdf.empty:
+        return None
+
+    # Prepare data for the map
+    map_data = fdf.copy()
+
+    # Add color coding based on observation types
+    obs_type_colors = {
+        'METAR': [255, 99, 71, 180],  # Tomato
+        'SYNOP': [65, 105, 225, 180],  # Royal Blue
+        'BUOY': [50, 205, 50, 180],  # Lime Green
+        'AG': [255, 165, 0, 180],  # Orange
+        'RWIS': [148, 0, 211, 180],  # Dark Violet
+        'Citizen': [220, 20, 60, 180],  # Crimson
+        'SHIP': [0, 191, 255, 180],  # Deep Sky Blue
+        'Hydro': [0, 100, 0, 180],  # Dark Green
+        'Others': [128, 128, 128, 180],  # Gray
+    }
+
+    # Assign colors based on primary observation type
+    def get_color(obs_types):
+        for obs_type in obs_types:
+            if obs_type in obs_type_colors:
+                return obs_type_colors[obs_type]
+        return [200, 200, 200, 180]  # Default gray
+
+    map_data['color'] = map_data['obsTypes'].apply(get_color)
+
+    # Highlight selected station if any
+    if selected_station:
+        map_data['is_selected'] = map_data['stationCode'] == selected_station
+        map_data.loc[map_data['is_selected'], 'color'] = [255, 0, 0, 255]  # Red for selected
+
+    # Create the layer
+    layer = pdk.Layer(
+        "ScatterplotLayer",
+        data=map_data,
+        get_position='[longitude, latitude]',
+        get_radius=1000,
+        get_fill_color='color',
+        pickable=True,
+        auto_highlight=True,
+        radius_min_pixels=5,
+        radius_max_pixels=20,
+        radius_scale=1
+    )
+
+    # Set initial view state
+    if selected_station and not map_data[map_data['is_selected']].empty:
+        # Focus on selected station
+        sel_station = map_data[map_data['is_selected']].iloc[0]
+        view_state = pdk.ViewState(
+            latitude=sel_station.latitude,
+            longitude=sel_station.longitude,
+            zoom=8,
+            pitch=0
+        )
+    else:
+        # Focus on all stations
+        view_state = pdk.ViewState(
+            latitude=map_data.latitude.mean(),
+            longitude=map_data.longitude.mean(),
+            zoom=2,
+            pitch=0
+        )
+
+    # Create tooltip
+    tooltip = {
+        "html": "<b>Station:</b> {stationCode}<br/><b>Name:</b> {name}<br/><b>Types:</b> {obsTypes}",
+        "style": {
+            "backgroundColor": "steelblue",
+            "color": "white"
+        }
+    }
+
+    # Create deck
+    deck = pdk.Deck(
+        layers=[layer],
+        initial_view_state=view_state,
+        tooltip=tooltip,
+        map_style='light' if not st.session_state.get('dark_mode', False) else 'dark'
+    )
+
+    return deck
+
+
+def create_obs_type_chart(df):
+    """Create a chart showing distribution of observation types"""
+    expl = df.explode('obsTypes')
+    type_counts = expl['obsTypes'].value_counts().reset_index()
+    type_counts.columns = ['Observation Type', 'Count']
+
+    fig = px.bar(
+        type_counts,
+        x='Observation Type',
+        y='Count',
+        title="Distribution of Observation Types",
+        color='Observation Type'
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        xaxis_tickangle=-45
+    )
+
+    return fig
+
+
+def create_country_chart(df):
+    """Create a chart showing stations by country"""
+    country_counts = df['Country'].value_counts().reset_index()
+    country_counts.columns = ['Country', 'Count']
+
+    # Show top 15 countries
+    top_countries = country_counts.head(15)
+
+    fig = px.bar(
+        top_countries,
+        x='Country',
+        y='Count',
+        title="Stations by Country (Top 15)",
+        color='Country'
+    )
+
+    fig.update_layout(
+        showlegend=False,
+        xaxis_tickangle=-45
+    )
+
+    return fig
+
+
+# --- Enhanced UI and main logic ---
 def show_dashboard(df, token):
     from pydeck.data_utils.viewport_helpers import compute_view
 
@@ -539,6 +694,18 @@ def show_dashboard(df, token):
             margin-bottom: 10px;
         }
 
+        /* Toggle switch for dark mode */
+        .toggle-container {
+            display: flex;
+            align-items: center;
+            margin-bottom: 10px;
+        }
+
+        .toggle-label {
+            margin-left: 10px;
+            font-weight: 500;
+        }
+
     </style>
     """, unsafe_allow_html=True)
 
@@ -589,6 +756,19 @@ def show_dashboard(df, token):
                 border-color: #2d3746 !important;
                 color: #9aa5b1 !important;
             }
+
+            .filter-section {
+                background-color: #1a1d24 !important;
+            }
+
+            .custom-expander-header {
+                background-color: #2a3040 !important;
+                color: #f0f2f6 !important;
+            }
+
+            .custom-expander-header:hover {
+                background-color: #343b4d !important;
+            }
         </style>
         """, unsafe_allow_html=True)
 
@@ -608,7 +788,7 @@ def show_dashboard(df, token):
     with col3:
         sel_countries = st.multiselect(
             "Filter by Country:",
-            options=sorted(df['Country'].unique()),  # Added sorted()
+            options=sorted(df['Country'].unique()),
             help="Filter stations by their country location"
         )
     with col4:
@@ -623,6 +803,11 @@ def show_dashboard(df, token):
             options=sorted({p for row in df['parameters'] for p in row}),
             help="Show only stations reporting selected parameters"
         )
+
+    # Add clear filters button
+    if st.button("Clear All Filters", use_container_width=True):
+        st.session_state.main_search = ""
+        st.rerun()
 
     st.markdown("</div>", unsafe_allow_html=True)  # Close filter-section
 
@@ -678,7 +863,7 @@ def show_dashboard(df, token):
 
     # Only show summary cards when NO filters are applied
     if not filters_applied:
-        col1, col2 = st.columns(2)
+        col1, col2, col3 = st.columns(3)
         with col1:
             st.markdown(f"""
             <div class="summary-card">
@@ -694,6 +879,29 @@ def show_dashboard(df, token):
                 <div class="metric-label">Countries</div>
             </div>
             """, unsafe_allow_html=True)
+
+        with col3:
+            # Count unique observation types
+            all_obs_types = set()
+            for obs_list in df['obsTypes']:
+                all_obs_types.update(obs_list)
+            st.markdown(f"""
+            <div class="summary-card">
+                <div class="metric-value">{len(all_obs_types)}</div>
+                <div class="metric-label">Observation Types</div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        # Add charts when no filters are applied
+        tab1, tab2 = st.tabs(["Observation Types", "Countries"])
+
+        with tab1:
+            fig = create_obs_type_chart(df)
+            st.plotly_chart(fig, use_container_width=True)
+
+        with tab2:
+            fig = create_country_chart(df)
+            st.plotly_chart(fig, use_container_width=True)
 
     # Only show export if filters are applied
     if filters_applied:
@@ -775,7 +983,8 @@ def show_dashboard(df, token):
             status_placeholder = st.empty()
 
             if sel:
-                md = fetch_station_metadata(sel, token, status_placeholder=status_placeholder)
+                with st.spinner("Fetching station metadata..."):
+                    md = fetch_station_metadata(sel, token)
 
         # If no station selected, show placeholder
         if not md:
@@ -895,28 +1104,23 @@ def show_dashboard(df, token):
 
                     # Use expander for heatmap with custom label
                     with st.expander(f"{param_name} Availability", expanded=False):
-                        # Wrap in custom styling
-                        st.markdown(f"""
-                        <div class="custom-expander">
-                            <div class="custom-expander-content">
-                                {generate_heatmap(ac, param_name)}
-                            </div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                        # Generate interactive heatmap using Plotly
+                        heatmap_fig = generate_heatmap_plotly(ac, param_name)
+                        if heatmap_fig:
+                            st.plotly_chart(heatmap_fig, use_container_width=True)
+                        else:
+                            st.info("No data available for heatmap visualization")
             else:
                 st.info("No parameter archive metadata available.")
 
     # Main content area - Map and Table
     if show and not fdf.empty:
         st.markdown("<div class='section-header'>Stations Map</div>", unsafe_allow_html=True)
-        layer = pdk.Layer("ScatterplotLayer", data=fdf, get_position='[longitude, latitude]',
-                          get_radius=20, get_fill_color=[1, 164, 159, 180], pickable=True, auto_highlight=True,
-                          radius_min_pixels=2)
 
-        vs = compute_view(fdf[['longitude', 'latitude']].dropna().values.tolist())
-        st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=vs,
-                                 tooltip={"html": "<b>Station Code:</b> {stationCode}<br/><b>Name:</b> {name}",
-                                          "style": {"backgroundColor": "#0072b5", "color": "white"}}))
+        # Create enhanced map
+        deck = create_station_map(fdf, sel)
+        if deck:
+            st.pydeck_chart(deck)
 
         st.markdown(f"<div class='section-header'>{len(results)} Active Station(s)</div>", unsafe_allow_html=True)
 
@@ -998,8 +1202,9 @@ def top_nav_bar():
     )
 
     # Create the top bar
-    with st.container():
+    col1, col2, col3 = st.columns([1, 3, 1])
 
+    with col1:
         # Hamburger menu popover
         with st.popover("☰", use_container_width=False):
             # Popover content without inner hamburger icon
@@ -1032,15 +1237,27 @@ def top_nav_bar():
                 st.session_state.dark_mode = dark_mode
                 st.rerun()
 
+            # Refresh data button
+            if st.button("Refresh Data", use_container_width=True, key="refresh_btn"):
+                st.cache_data.clear()
+                st.rerun()
+
             # Logout button
             if st.button("Logout", use_container_width=True, key="logout_btn"):
                 st.info("Logout functionality would go here")
 
             st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
 
-        st.markdown('</div>', unsafe_allow_html=True)  # Close top-bar-user
+    with col2:
+        st.markdown(f"<h1 style='text-align: center; margin: 0; color: #0072b5;'>DTN Station Explorer</h1>",
+                    unsafe_allow_html=True)
 
-        st.markdown('</div>', unsafe_allow_html=True)  # Close top-bar
+    with col3:
+        st.markdown(f"""
+        <div style='display: flex; justify-content: flex-end; align-items: center; height: 100%;'>
+            <span class="access-level">{st.session_state.access_level} Access</span>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 def main():
@@ -1048,7 +1265,7 @@ def main():
         page_title="DTN Station Explorer",
         layout="wide",
         page_icon="🌦️",
-        initial_sidebar_state="collapsed"
+        initial_sidebar_state="expanded"
     )
 
     # Initialize session state
@@ -1060,21 +1277,23 @@ def main():
     # Add the top navigation bar
     top_nav_bar()
 
-    # Header
-    st.markdown(
-        f"<div style='margin-top: 20px; margin-bottom: 20px;'>"
-        f"<h1 style='color: #0072b5; font-size:1.8rem; border-bottom: 2px solid #00a99d; padding-bottom: 10px;'>"
-        f"{st.session_state.access_level} Access</h1>"
-        f"</div>",
-        unsafe_allow_html=True
-    )
-
     # Load data and show dashboard
     try:
-        df, token = get_stations_by_access(st.session_state.access_level)
-        show_dashboard(df, token)
+        with st.spinner("Loading station data..."):
+            df, token = get_stations_by_access(st.session_state.access_level)
+
+        if df.empty:
+            st.error("No station data available. Please check your credentials and try again.")
+            if st.button("Retry"):
+                st.cache_data.clear()
+                st.rerun()
+        else:
+            show_dashboard(df, token)
     except Exception as e:
         st.error(f"Could not load `{st.session_state.access_level}` data: {e}")
+        if st.button("Retry"):
+            st.cache_data.clear()
+            st.rerun()
 
 
 if __name__ == "__main__":

@@ -39,20 +39,45 @@ def login():
         /* Hide any empty containers or divs that might show up */
         .stMarkdown:empty,
         .stContainer:empty,
-        div[data-testid="stMarkdownContainer"]:empty {
+        div[data-testid="stMarkdownContainer"]:empty,
+        .element-container:empty,
+        .stVerticalBlock > div:empty {
             display: none !important;
         }
 
-        /* Hide the main container padding */
+        /* Aggressively hide all potential empty elements */
+        div:empty:not(.login-container):not(.stTextInput):not(.stButton) {
+            display: none !important;
+        }
+
+        /* Remove all margins and padding from main containers */
         .main .block-container {
             padding-top: 0 !important;
             padding-bottom: 0 !important;
+            padding-left: 0 !important;
+            padding-right: 0 !important;
+            margin: 0 !important;
         }
 
-        /* Main container styling */
+        /* Remove spacing from all streamlit containers */
+        .stVerticalBlock {
+            gap: 0 !important;
+        }
+
+        .element-container {
+            margin: 0 !important;
+        }
+
+        /* Force the body to have no extra spacing */
+        .stApp {
+            padding: 0 !important;
+            margin: 0 !important;
+        }
+
+        /* Main container styling - positioned absolutely to avoid any layout issues */
         .login-container {
             max-width: 420px;
-            margin: 80px auto;
+            margin: 0;
             padding: 40px;
             border-radius: 24px;
             background: rgba(255, 255, 255, 0.95);
@@ -62,9 +87,12 @@ def login():
                 0 2px 8px rgba(0, 0, 0, 0.05),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
             border: 1px solid rgba(255, 255, 255, 0.2);
-            position: relative;
-            overflow: hidden;
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+            position: fixed;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            z-index: 1000;
         }
 
         /* Title styling */

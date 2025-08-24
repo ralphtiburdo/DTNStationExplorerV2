@@ -104,22 +104,6 @@ def reverse_geocode_cached(lat, lon):
     return reverse_geocode.search([(lat, lon)])[0]['country']
 
 
-# Add this function to handle conversion of all list-like objects
-def convert_all_lists_to_tuples(df):
-    """
-    Recursively convert all lists in the DataFrame to tuples for hashability
-    """
-    df = df.copy()
-    for col in df.columns:
-        # Check if column contains any list-like objects
-        if df[col].apply(lambda x: isinstance(x, (list, np.ndarray))).any():
-            df[col] = df[col].apply(
-                lambda x: tuple(x) if isinstance(x, (list, np.ndarray)) else x
-            )
-    return df
-
-
-# Update the get_stations_by_access function
 @st.cache_data(show_spinner="Fetching station data…")
 def get_stations_by_access(access_choice: str):
     creds = {
@@ -136,10 +120,6 @@ def get_stations_by_access(access_choice: str):
     })
     resp.raise_for_status()
     df = pd.json_normalize(resp.json())
-
-    # Convert all lists to tuples first
-    df = convert_all_lists_to_tuples(df)
-
     df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
@@ -163,7 +143,7 @@ def get_stations_by_access(access_choice: str):
 
     # Convert lists to tuples for hashability
     def safe_convert_to_tuple(x):
-        if isinstance(x, (list, np.ndarray)):
+        if isinstance(x, list):
             return tuple(x)
         elif pd.notna(x):
             return (str(x),)
@@ -175,24 +155,14 @@ def get_stations_by_access(access_choice: str):
 
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
-
-    # Final conversion to ensure all lists are tuples
-    df = convert_all_lists_to_tuples(df)
-
     return df, token
 
 
-# Update the get_summary function to handle tuples
 @st.cache_data
 def get_summary(df):
-    # Create a deep copy to avoid modifying the original DataFrame
-    df_with_lists = df.copy(deep=True)
-
     # Convert tuples back to lists for exploding
-    df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(
-        lambda x: list(x) if isinstance(x, tuple) else x
-    )
-
+    df_with_lists = df.copy()
+    df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(list)
     expl = df_with_lists[['Country', 'obsTypes']].explode('obsTypes')
     pivot = expl.pivot_table(index='Country', columns='obsTypes', aggfunc='size', fill_value=0)
     pivot['Total'] = pivot.sum(axis=1)
@@ -739,20 +709,6 @@ def show_dashboard(df, token):
     filters_applied = False
     show = False
 
-    # Update the filter processing section in show_dashboard function
-
-    # Process filters
-    fdf = df.copy()
-    filters_applied = False
-    show = False
-
-    # Update the filter processing section in show_dashboard function
-
-    # Process filters
-    fdf = df.copy()
-    filters_applied = False
-    show = False
-
     if search.strip():
         terms = [t.strip().lower() for t in re.split(r"[,\s]+", search) if t.strip()]
         mask = fdf[['stationCode', 'icao', 'wmo', 'mgID', 'madisId', 'iata', 'faa', 'name', 'davisId', 'dtnLegacyID',
@@ -765,7 +721,6 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations matched your search.")
             filters_applied = True
-
     if sel_countries:
         mask = fdf['Country'].isin(sel_countries)
         if mask.any():
@@ -775,20 +730,18 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations in the selected countries")
             filters_applied = True
-
     if sel_obs:
-        # Handle tuples in filter - check if ALL selected obs types are in the tuple
+        # Handle tuples in filter
         mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
         if mask.any():
             fdf = fdf[mask]
             show = True
             filters_applied = True
         else:
-            st.warning("No stations have all the selected observation types")
+            st.warning("No stations have the selected observation types")
             filters_applied = True
-
     if sel_params:
-        # Handle tuples in filter - check if ALL selected parameters are in the tuple
+        # Handle tuples in filter
         mask = fdf['parameters'].apply(lambda tup: all(p in tup for p in sel_params))
         if mask.any():
             fdf = fdf[mask]
@@ -842,13 +795,13 @@ def show_dashboard(df, token):
             if cols:
                 fmt = st.selectbox("Format:", ["CSV", "TXT", "Excel (single)", "Excel (1 sheet/country)"],
                                    key="fmt")
-                df_to_export = fdf[cols].copy()  # Create a copy to avoid SettingWithCopyWarning
+                df_to_export = fdf[cols]
 
                 # Convert tuples to strings for export
                 for col in df_to_export.columns:
                     if df_to_export[col].dtype == object and df_to_export[col].apply(
                             lambda x: isinstance(x, tuple)).any():
-                        df_to_export.loc[:, col] = df_to_export[col].apply(
+                        df_to_export[col] = df_to_export[col].apply(
                             lambda x: ', '.join(x) if isinstance(x, tuple) else x)
 
                 if fmt == "CSV":
@@ -887,16 +840,14 @@ def show_dashboard(df, token):
     optional = [c for c in
                 ['mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID',
                  'ghcndID'] if c in fdf.columns]
-    raw = fdf[required + optional].copy()  # Create a copy to avoid SettingWithCopyWarning
+    raw = fdf[required + optional]
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
 
-    # Convert tuples to strings for display and ensure all values are strings
+    # Convert tuples to strings for display
     for col in raw.columns:
-        if raw[col].dtype == object:
-            raw.loc[:, col] = raw[col].apply(
-                lambda x: ', '.join(x) if isinstance(x, tuple) else str(x) if pd.notna(x) else x
-            )
+        if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
+            raw[col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
 
     results = drop_blank_columns(raw)
 

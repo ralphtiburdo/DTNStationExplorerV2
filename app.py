@@ -61,7 +61,7 @@ def login():
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            if username == "OneObs" and password == "Wx2025!":
+            if username == os.getenv("USERNAME") and password == os.getenv("PASSWORD"):
                 st.session_state.authenticated = True
                 st.session_state.login_attempted = False
                 st.rerun()
@@ -795,13 +795,13 @@ def show_dashboard(df, token):
             if cols:
                 fmt = st.selectbox("Format:", ["CSV", "TXT", "Excel (single)", "Excel (1 sheet/country)"],
                                    key="fmt")
-                df_to_export = fdf[cols]
+                df_to_export = fdf[cols].copy()  # Create a copy to avoid SettingWithCopyWarning
 
                 # Convert tuples to strings for export
                 for col in df_to_export.columns:
                     if df_to_export[col].dtype == object and df_to_export[col].apply(
                             lambda x: isinstance(x, tuple)).any():
-                        df_to_export[col] = df_to_export[col].apply(
+                        df_to_export.loc[:, col] = df_to_export[col].apply(
                             lambda x: ', '.join(x) if isinstance(x, tuple) else x)
 
                 if fmt == "CSV":
@@ -840,14 +840,16 @@ def show_dashboard(df, token):
     optional = [c for c in
                 ['mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID',
                  'ghcndID'] if c in fdf.columns]
-    raw = fdf[required + optional]
+    raw = fdf[required + optional].copy()  # Create a copy to avoid SettingWithCopyWarning
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
 
-    # Convert tuples to strings for display
+    # Convert tuples to strings for display and ensure all values are strings
     for col in raw.columns:
-        if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
-            raw[col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
+        if raw[col].dtype == object:
+            raw.loc[:, col] = raw[col].apply(
+                lambda x: ', '.join(x) if isinstance(x, tuple) else str(x) if pd.notna(x) else x
+            )
 
     results = drop_blank_columns(raw)
 
@@ -1135,17 +1137,6 @@ def top_nav_bar():
                     st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
-
-        with col2:
-            st.markdown(
-                f'<div style="text-align: center; font-size: 1.5rem; font-weight: bold; color: #0072b5; padding-top: 10px;">DTN Station Explorer</div>',
-                unsafe_allow_html=True)
-
-        with col3:
-            st.markdown(
-                f'<div style="text-align: right; padding-top: 15px;"><span class="access-level">{st.session_state.access_level} Access</span></div>',
-                unsafe_allow_html=True)
-
 
 def main():
     st.set_page_config(

@@ -102,84 +102,71 @@ def login():
             100% { width: 60px; opacity: 1; }
         }
 
-        /* Hide default Streamlit input styling */
-        .stTextInput > div > div > input,
-        .stTextInput > div > div > input:focus {
-            border: none !important;
-            outline: none !important;
-            background: transparent !important;
-            box-shadow: none !important;
-        }
-
-        /* Custom input container */
-        .floating-input-container {
+        /* Streamlit input container styling */
+        .stTextInput {
             position: relative;
             margin-bottom: 24px;
         }
 
-        .floating-input {
-            width: 100%;
-            padding: 20px 16px 8px 16px;
-            border: 2px solid rgba(0, 114, 181, 0.2);
-            border-radius: 12px;
-            background: rgba(255, 255, 255, 0.8);
-            font-size: 16px;
-            font-weight: 400;
-            color: #2d3748;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            backdrop-filter: blur(10px);
+        /* Style the input field */
+        .stTextInput > div > div > input {
+            padding: 20px 16px 8px 16px !important;
+            border: 2px solid rgba(0, 114, 181, 0.2) !important;
+            border-radius: 12px !important;
+            background: rgba(255, 255, 255, 0.8) !important;
+            font-size: 16px !important;
+            font-weight: 400 !important;
+            color: #2d3748 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: none !important;
         }
 
-        .floating-input:focus {
-            border-color: #0072b5;
-            background: rgba(255, 255, 255, 0.95);
+        .stTextInput > div > div > input:focus {
+            border-color: #0072b5 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
             box-shadow: 
                 0 0 0 4px rgba(0, 114, 181, 0.1),
-                0 4px 12px rgba(0, 114, 181, 0.15);
-            transform: translateY(-2px);
+                0 4px 12px rgba(0, 114, 181, 0.15) !important;
+            transform: translateY(-2px) !important;
+            outline: none !important;
         }
 
-        .floating-label {
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: linear-gradient(135deg, #0072b5, #00a99d);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            z-index: 1;
+        /* Style the label as floating label */
+        .stTextInput > label {
+            position: absolute !important;
+            left: 16px !important;
+            top: 50% !important;
+            transform: translateY(-50%) !important;
+            background: linear-gradient(135deg, #0072b5, #00a99d) !important;
+            background-clip: text !important;
+            -webkit-background-clip: text !important;
+            -webkit-text-fill-color: transparent !important;
+            font-size: 16px !important;
+            font-weight: 500 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            pointer-events: none !important;
+            z-index: 10 !important;
+            margin: 0 !important;
         }
 
-        .floating-input:focus + .floating-label,
-        .floating-input:not(:placeholder-shown) + .floating-label,
-        .floating-input.has-value + .floating-label {
-            top: 12px;
-            transform: translateY(0);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
+        /* Move label up when input is focused or has value */
+        .stTextInput > div > div > input:focus ~ label,
+        .stTextInput > div > div > input:not([value=""]) ~ label {
+            top: 12px !important;
+            transform: translateY(0) !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
         }
 
-        /* Input icons */
-        .input-icon {
-            position: absolute;
-            right: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            color: #0072b5;
-            opacity: 0.6;
-            transition: all 0.3s ease;
-            font-size: 18px;
-        }
-
-        .floating-input:focus ~ .input-icon {
-            opacity: 1;
-            transform: translateY(-50%) scale(1.1);
+        /* Alternative approach - move label when input has content */
+        .stTextInput:has(input:not(:placeholder-shown)) > label {
+            top: 12px !important;
+            transform: translateY(0) !important;
+            font-size: 12px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
         }
 
         /* Login button styling */
@@ -296,68 +283,17 @@ def login():
                 transform: translateY(0);
             }
         }
-    </style>
-
-    <script>
-        // Add JavaScript for floating label functionality
-        function setupFloatingLabels() {
-            const inputs = document.querySelectorAll('.floating-input');
-            inputs.forEach(input => {
-                // Check if input has value on page load
-                if (input.value) {
-                    input.classList.add('has-value');
-                }
-
-                // Add event listeners
-                input.addEventListener('input', function() {
-                    if (this.value) {
-                        this.classList.add('has-value');
-                    } else {
-                        this.classList.remove('has-value');
-                    }
-                });
-
-                input.addEventListener('blur', function() {
-                    if (!this.value) {
-                        this.classList.remove('has-value');
-                    }
-                });
-            });
-        }
-
-        // Set up when page loads
-        document.addEventListener('DOMContentLoaded', setupFloatingLabels);
-
-        // Also set up after Streamlit updates (for dynamic content)
-        setTimeout(setupFloatingLabels, 100);
-    </script>
-    """, unsafe_allow_html=True)
+    </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
     st.markdown('<div class="login-title">DTN Station Explorer</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        # Custom HTML for floating label inputs
-        st.markdown("""
-        <div class="floating-input-container">
-            <input type="text" class="floating-input" name="username" placeholder=" " required>
-            <label class="floating-label">Username</label>
-            <div class="input-icon">👤</div>
-        </div>
-        """, unsafe_allow_html=True)
+        # Username field with floating label effect
+        username = st.text_input("Username", placeholder=" ", key="username_input")
 
-        username = st.text_input("Username", placeholder=" ", label_visibility="collapsed", key="username_input")
-
-        st.markdown("""
-        <div class="floating-input-container">
-            <input type="password" class="floating-input" name="password" placeholder=" " required>
-            <label class="floating-label">Password</label>
-            <div class="input-icon">🔒</div>
-        </div>
-        """, unsafe_allow_html=True)
-
-        password = st.text_input("Password", type="password", placeholder=" ", label_visibility="collapsed",
-                                 key="password_input")
+        # Password field with floating label effect
+        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
 
         submitted = st.form_submit_button("Sign In")
 

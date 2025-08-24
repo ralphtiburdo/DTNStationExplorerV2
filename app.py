@@ -400,14 +400,13 @@ def cached_station_data(access_choice):
     # Fill new columns from tags where available
     for old, new in tag_map.items():
         if old in df.columns:
-            # Convert to string and handle NaN values
-            df[new] = df[old].fillna("").astype(str)
+            df[new] = df[old].fillna("")
 
     # Drop original tag columns
     df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
 
     # Handle list-type columns safely - convert to tuples for hashability
-    df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("").astype(str)
+    df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
 
     # Convert lists to tuples for hashability
     def safe_convert_to_tuple(x):
@@ -435,6 +434,8 @@ def cached_station_data(access_choice):
 def get_stations_by_access(access_choice: str):
     with st.spinner("Fetching station data…"):
         return cached_station_data(access_choice)
+
+
 
 
 # Disable Arrow serialization by default to prevent mixed object type crashes
@@ -909,12 +910,10 @@ def show_dashboard(df, token):
             padding: 8px 12px;
             border-radius: 4px;
             font-weight: bold;
-            font-weight: bold;
             color: #0072b5;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
-            align-items: center;
             align-items: center;
             transition: background-color 0.2s;
         }
@@ -1021,15 +1020,11 @@ def show_dashboard(df, token):
     with col4:
         # Convert tuples to lists for the multiselect options
         obs_types = sorted({o for row in df['obsTypes'] for o in row})
-        # Add the new combined option
-        obs_types_with_combined = sorted(set(obs_types) | {"SYNOP & METAR"})
-
         sel_obs = st.multiselect(
             "Filter by Observation Types:",
-            options=obs_types_with_combined,
+            options=obs_types,
             help="Show only stations reporting selected observation types"
         )
-
     with col5:
         # Convert tuples to lists for the multiselect options
         params = sorted({p for row in df['parameters'] for p in row})
@@ -1068,17 +1063,8 @@ def show_dashboard(df, token):
             st.warning("No stations in the selected countries")
             filters_applied = True
     if sel_obs:
-        # Handle the special "SYNOP & METAR" case
-        if "SYNOP & METAR" in sel_obs:
-            # Remove the special option and add the individual types
-            sel_obs = [o for o in sel_obs if o != "SYNOP & METAR"]
-            sel_obs.extend(["SYNOP", "ISD", "METAR"])
-            # Use any instead of all to match stations with any of these types
-            mask = fdf['obsTypes'].apply(lambda tup: any(o in tup for o in ["SYNOP", "ISD", "METAR"]))
-        else:
-            # Original logic for other selections
-            mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
-
+        # Handle tuples in filter
+        mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
         if mask.any():
             fdf = fdf[mask]
             show = True
@@ -1190,23 +1176,12 @@ def show_dashboard(df, token):
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
 
-    # Convert all columns to string to avoid Arrow serialization issues
+    # Convert tuples to strings for display - FIXED SettingWithCopyWarning
     for col in raw.columns:
         if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
-            raw.loc[:, col] = raw[col].apply(lambda x: ', '.join(map(str, x)) if isinstance(x, tuple) else x)
-        else:
-            # For numeric columns, convert to string more carefully
-            if pd.api.types.is_numeric_dtype(raw[col]):
-                # Convert NaN values to empty string first, then convert to string
-                raw.loc[:, col] = raw[col].fillna('').astype(str)
-            else:
-                # For other object columns, convert directly to string
-                raw.loc[:, col] = raw[col].astype(str)
+            raw.loc[:, col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
 
     results = drop_blank_columns(raw)
-
-    # Convert all columns to string to avoid Arrow serialization issues
-    results = results.astype(str)
 
     # Move station details to sidebar
     with st.sidebar:
@@ -1349,6 +1324,7 @@ def show_dashboard(df, token):
                     with st.expander(f"{param_name} Availability", expanded=False):
                         # Wrap in custom styling
                         st.markdown(f"""
+                        <div class="custom-expander">
                             <div class="custom-expander-content">
                                 {generate_heatmap(ac, param_name)}
                             </div>

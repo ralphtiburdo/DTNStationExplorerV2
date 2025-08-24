@@ -21,44 +21,281 @@ if 'login_attempted' not in st.session_state:
     st.session_state.login_attempted = False
 
 
-# Login function
+# Login function with modern floating label design
 def login():
     st.markdown("""
     <style>
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            background: white;
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
+        /* Hide Streamlit's default elements that might cause unwanted rectangles */
+        .stApp > header {
+            display: none !important;
         }
+
+        .stApp > div:first-child {
+            padding-top: 0 !important;
+        }
+
+        /* Hide any empty containers or divs that might show up */
+        .stMarkdown:empty,
+        .stContainer:empty,
+        div[data-testid="stMarkdownContainer"]:empty {
+            display: none !important;
+        }
+
+        /* Hide the main container padding */
+        .main .block-container {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
+        /* Main container styling */
+        .login-container {
+            max-width: 420px;
+            margin: 80px auto;
+            padding: 40px;
+            border-radius: 24px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            box-shadow: 
+                0 8px 32px rgba(0, 0, 0, 0.1),
+                0 2px 8px rgba(0, 0, 0, 0.05),
+                inset 0 1px 0 rgba(255, 255, 255, 0.9);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            position: relative;
+            overflow: hidden;
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
+        }
+
+        /* Animated background gradient */
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            left: -50%;
+            width: 200%;
+            height: 200%;
+            background: linear-gradient(45deg, 
+                rgba(0, 114, 181, 0.1) 0%, 
+                rgba(0, 169, 157, 0.1) 25%,
+                rgba(138, 43, 226, 0.1) 50%,
+                rgba(255, 20, 147, 0.1) 75%,
+                rgba(0, 114, 181, 0.1) 100%);
+            animation: gradientShift 8s ease-in-out infinite;
+            z-index: -1;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { transform: rotate(0deg) scale(1); }
+            25% { transform: rotate(90deg) scale(1.1); }
+            50% { transform: rotate(180deg) scale(1); }
+            75% { transform: rotate(270deg) scale(1.1); }
+        }
+
+        /* Title styling */
         .login-title {
             text-align: center;
-            color: #0072b5;
-            margin-bottom: 30px;
-            font-size: 24px;
-            font-weight: bold;
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 100%);
+            background-clip: text;
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            margin-bottom: 40px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            position: relative;
         }
-        .stButton>button {
-            width: 100%;
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 100%);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 16px;
+
+        .login-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(90deg, #0072b5, #00a99d);
+            border-radius: 2px;
+            animation: titleUnderline 2s ease-out;
         }
-    </style>
-    """, unsafe_allow_html=True)
+
+        @keyframes titleUnderline {
+            0% { width: 0; opacity: 0; }
+            100% { width: 60px; opacity: 1; }
+        }
+
+        /* Streamlit input container styling */
+        .stTextInput {
+            margin-bottom: 24px;
+        }
+
+        /* Style the input field */
+        .stTextInput > div > div > input {
+            padding: 16px !important;
+            border: 2px solid rgba(0, 114, 181, 0.2) !important;
+            border-radius: 12px !important;
+            background: rgba(255, 255, 255, 0.8) !important;
+            font-size: 16px !important;
+            font-weight: 400 !important;
+            color: #2d3748 !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            backdrop-filter: blur(10px) !important;
+            box-shadow: none !important;
+        }
+
+        .stTextInput > div > div > input:focus {
+            border-color: #0072b5 !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+            box-shadow: 
+                0 0 0 4px rgba(0, 114, 181, 0.1),
+                0 4px 12px rgba(0, 114, 181, 0.15) !important;
+            transform: translateY(-2px) !important;
+            outline: none !important;
+        }
+
+        /* Style placeholders */
+        .stTextInput > div > div > input::placeholder {
+            color: rgba(0, 114, 181, 0.6) !important;
+            font-weight: 500 !important;
+            transition: opacity 0.3s ease !important;
+        }
+
+        .stTextInput > div > div > input:focus::placeholder {
+            opacity: 0.3 !important;
+        }
+
+        /* Hide the default Streamlit labels */
+        .stTextInput > label {
+            display: none !important;
+        }
+
+        /* Login button styling */
+        .stButton > button {
+            width: 100% !important;
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 100%) !important;
+            background-size: 200% 200% !important;
+            color: white !important;
+            border: none !important;
+            padding: 16px 32px !important;
+            border-radius: 12px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            letter-spacing: 0.5px !important;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            position: relative !important;
+            overflow: hidden !important;
+            box-shadow: 0 4px 16px rgba(0, 114, 181, 0.3) !important;
+            text-transform: uppercase !important;
+        }
+
+        .stButton > button:hover {
+            background-position: 100% 0 !important;
+            transform: translateY(-2px) !important;
+            box-shadow: 0 8px 24px rgba(0, 114, 181, 0.4) !important;
+        }
+
+        .stButton > button:active {
+            transform: translateY(0) !important;
+            box-shadow: 0 4px 12px rgba(0, 114, 181, 0.3) !important;
+        }
+
+        /* Button ripple effect */
+        .stButton > button::before {
+            content: '' !important;
+            position: absolute !important;
+            top: 50% !important;
+            left: 50% !important;
+            width: 0 !important;
+            height: 0 !important;
+            border-radius: 50% !important;
+            background: rgba(255, 255, 255, 0.3) !important;
+            transform: translate(-50%, -50%) !important;
+            transition: width 0.6s, height 0.6s !important;
+        }
+
+        .stButton > button:active::before {
+            width: 300px !important;
+            height: 300px !important;
+        }
+
+        /* Error message styling */
+        .stAlert {
+            border-radius: 8px !important;
+            border-left: 4px solid #e53e3e !important;
+        }
+
+        /* Floating particles animation */
+        .login-container::after {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background-image: 
+                radial-gradient(circle at 20% 30%, rgba(0, 114, 181, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 80% 70%, rgba(0, 169, 157, 0.1) 0%, transparent 50%),
+                radial-gradient(circle at 60% 20%, rgba(138, 43, 226, 0.1) 0%, transparent 50%);
+            animation: particleFloat 12s ease-in-out infinite;
+            pointer-events: none;
+            z-index: -1;
+        }
+
+        @keyframes particleFloat {
+            0%, 100% { 
+                background-position: 0% 0%, 100% 100%, 50% 0%;
+                opacity: 0.5;
+            }
+            33% { 
+                background-position: 30% 30%, 70% 70%, 80% 30%;
+                opacity: 0.8;
+            }
+            66% { 
+                background-position: 70% 10%, 30% 80%, 20% 60%;
+                opacity: 0.6;
+            }
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 40px 20px;
+                padding: 30px 24px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+        }
+
+        /* Smooth page entry animation */
+        .login-container {
+            animation: slideInUp 0.8s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        @keyframes slideInUp {
+            0% {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            100% {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+    </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">DTN Station Explorer Login</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        submitted = st.form_submit_button("Login")
+        # Username field with placeholder
+        username = st.text_input("Username", placeholder="Username", key="username_input", label_visibility="collapsed")
+
+        # Password field with placeholder
+        password = st.text_input("Password", type="password", placeholder="Password", key="password_input",
+                                 label_visibility="collapsed")
+
+        submitted = st.form_submit_button("Sign In")
 
         if submitted:
             if username == os.getenv("USERNAME") and password == os.getenv("PASSWORD"):
@@ -70,7 +307,6 @@ def login():
                 st.error("Invalid username or password")
 
     st.markdown('</div>', unsafe_allow_html=True)
-
 
 # Show login screen if not authenticated
 if not st.session_state.authenticated:

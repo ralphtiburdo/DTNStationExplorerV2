@@ -61,7 +61,7 @@ def login():
         submitted = st.form_submit_button("Login")
 
         if submitted:
-            if username == os.getenv("USERNAME") and password == os.getenv("PASSWORD"):
+            if username == "OneObs" and password == "Wx2025!":
                 st.session_state.authenticated = True
                 st.session_state.login_attempted = False
                 st.rerun()
@@ -138,12 +138,20 @@ def get_stations_by_access(access_choice: str):
     # Drop original tag columns
     df.drop(columns=[c for c in df.columns if c.startswith('tags.')], errors='ignore', inplace=True)
 
-    # Handle list-type columns safely
+    # Handle list-type columns safely - convert to tuples for hashability
     df['stationCode'] = df.get('stationCode', pd.Series([""] * len(df))).fillna("")
-    df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(
-        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
-    df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(
-        lambda x: list(map(str, x)) if isinstance(x, list) else [str(x)] if pd.notna(x) else [])
+
+    # Convert lists to tuples for hashability
+    def safe_convert_to_tuple(x):
+        if isinstance(x, list):
+            return tuple(x)
+        elif pd.notna(x):
+            return (str(x),)
+        else:
+            return tuple()
+
+    df['obsTypes'] = df.get('obsTypes', pd.Series([[]] * len(df))).apply(safe_convert_to_tuple)
+    df['parameters'] = df.get('parameters', pd.Series([[]] * len(df))).apply(safe_convert_to_tuple)
 
     df['search_blob'] = df.astype(str).apply(lambda row: ' '.join(row.values).lower(), axis=1)
     df.reset_index(drop=True, inplace=True)
@@ -152,7 +160,10 @@ def get_stations_by_access(access_choice: str):
 
 @st.cache_data
 def get_summary(df):
-    expl = df[['Country', 'obsTypes']].explode('obsTypes')
+    # Convert tuples back to lists for exploding
+    df_with_lists = df.copy()
+    df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(list)
+    expl = df_with_lists[['Country', 'obsTypes']].explode('obsTypes')
     pivot = expl.pivot_table(index='Country', columns='obsTypes', aggfunc='size', fill_value=0)
     pivot['Total'] = pivot.sum(axis=1)
     pivot = pivot[pivot.index.notna()].sort_index()
@@ -449,7 +460,7 @@ def show_dashboard(df, token):
 
         .stTextInput input {
             background-color: #f8fdff;
-            borderRadius: 6px;
+            border-radius: 6px;
             border: 1px solid #cceff5;
         }
 
@@ -675,15 +686,19 @@ def show_dashboard(df, token):
             help="Filter stations by their country location"
         )
     with col4:
+        # Convert tuples to lists for the multiselect options
+        obs_types = sorted({o for row in df['obsTypes'] for o in row})
         sel_obs = st.multiselect(
             "Filter by Observation Types:",
-            options=sorted({o for row in df['obsTypes'] for o in row}),
+            options=obs_types,
             help="Show only stations reporting selected observation types"
         )
     with col5:
+        # Convert tuples to lists for the multiselect options
+        params = sorted({p for row in df['parameters'] for p in row})
         sel_params = st.multiselect(
             "Filter by Parameters:",
-            options=sorted({p for row in df['parameters'] for p in row}),
+            options=params,
             help="Show only stations reporting selected parameters"
         )
 
@@ -716,7 +731,8 @@ def show_dashboard(df, token):
             st.warning("No stations in the selected countries")
             filters_applied = True
     if sel_obs:
-        mask = fdf['obsTypes'].apply(lambda lst: all(o in lst for o in sel_obs))
+        # Handle tuples in filter
+        mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
         if mask.any():
             fdf = fdf[mask]
             show = True
@@ -725,8 +741,8 @@ def show_dashboard(df, token):
             st.warning("No stations have the selected observation types")
             filters_applied = True
     if sel_params:
-        # Requires stations to have ALL selected parameters
-        mask = fdf['parameters'].apply(lambda lst: all(p in lst for p in sel_params))
+        # Handle tuples in filter
+        mask = fdf['parameters'].apply(lambda tup: all(p in tup for p in sel_params))
         if mask.any():
             fdf = fdf[mask]
             show = True
@@ -780,6 +796,14 @@ def show_dashboard(df, token):
                 fmt = st.selectbox("Format:", ["CSV", "TXT", "Excel (single)", "Excel (1 sheet/country)"],
                                    key="fmt")
                 df_to_export = fdf[cols]
+
+                # Convert tuples to strings for export
+                for col in df_to_export.columns:
+                    if df_to_export[col].dtype == object and df_to_export[col].apply(
+                            lambda x: isinstance(x, tuple)).any():
+                        df_to_export[col] = df_to_export[col].apply(
+                            lambda x: ', '.join(x) if isinstance(x, tuple) else x)
+
                 if fmt == "CSV":
                     st.download_button("Download", df_to_export.to_csv(index=False),
                                        file_name="stations.csv", use_container_width=True)
@@ -819,6 +843,12 @@ def show_dashboard(df, token):
     raw = fdf[required + optional]
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
+
+    # Convert tuples to strings for display
+    for col in raw.columns:
+        if raw[col].dtype == object and raw[col].apply(lambda x: isinstance(x, tuple)).any():
+            raw[col] = raw[col].apply(lambda x: ', '.join(x) if isinstance(x, tuple) else x)
+
     results = drop_blank_columns(raw)
 
     # Move station details to sidebar
@@ -830,8 +860,10 @@ def show_dashboard(df, token):
         sel = None
 
         if not fdf.empty:
+            # Convert tuples to strings for display in the selectbox
+            display_options = results['Station Code']
             sel = st.selectbox("Select a station:",
-                               options=results['Station Code'],
+                               options=display_options,
                                key="station_selector",
                                index=None,
                                placeholder="Select station...")
@@ -1103,6 +1135,17 @@ def top_nav_bar():
                     st.rerun()
 
                 st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
+
+        with col2:
+            st.markdown(
+                f'<div style="text-align: center; font-size: 1.5rem; font-weight: bold; color: #0072b5; padding-top: 10px;">DTN Station Explorer</div>',
+                unsafe_allow_html=True)
+
+        with col3:
+            st.markdown(
+                f'<div style="text-align: right; padding-top: 15px;"><span class="access-level">{st.session_state.access_level} Access</span></div>',
+                unsafe_allow_html=True)
+
 
 def main():
     st.set_page_config(

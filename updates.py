@@ -1104,12 +1104,6 @@ def top_nav_bar():
 
                 st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
 
-        with col3:
-            st.markdown(
-                f'<div style="text-align: right; padding-top: 15px;"><span class="access-level">{st.session_state.access_level} Access</span></div>',
-                unsafe_allow_html=True)
-
-
 def main():
     st.set_page_config(
         page_title="DTN Station Explorer",

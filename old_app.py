@@ -14,69 +14,6 @@ from datetime import datetime, timezone
 import os
 from dotenv import load_dotenv
 
-# Initialize session state for authentication
-if 'authenticated' not in st.session_state:
-    st.session_state.authenticated = False
-if 'login_attempted' not in st.session_state:
-    st.session_state.login_attempted = False
-
-
-# Login function
-def login():
-    st.markdown("""
-    <style>
-        .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            background: white;
-        }
-        .login-title {
-            text-align: center;
-            color: #0072b5;
-            margin-bottom: 30px;
-            font-size: 24px;
-            font-weight: bold;
-        }
-        .stButton>button {
-            width: 100%;
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 100%);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 16px;
-        }
-    </style>
-    """, unsafe_allow_html=True)
-
-    st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">DTN Station Explorer Login</div>', unsafe_allow_html=True)
-
-    with st.form("login_form"):
-        username = st.text_input("Username", placeholder="Enter your username")
-        password = st.text_input("Password", type="password", placeholder="Enter your password")
-        submitted = st.form_submit_button("Login")
-
-        if submitted:
-            if username == os.getenv("USERNAME") and password == os.getenv("PASSWORD"):
-                st.session_state.authenticated = True
-                st.session_state.login_attempted = False
-                st.rerun()
-            else:
-                st.session_state.login_attempted = True
-                st.error("Invalid username or password")
-
-    st.markdown('</div>', unsafe_allow_html=True)
-
-
-# Show login screen if not authenticated
-if not st.session_state.authenticated:
-    login()
-    st.stop()
-
 load_dotenv()  # <-- this makes os.getenv pick up your .env
 
 CLIENT_ID_INTERNAL = os.getenv("CLIENT_ID_INTERNAL")
@@ -449,7 +386,7 @@ def show_dashboard(df, token):
 
         .stTextInput input {
             background-color: #f8fdff;
-            borderRadius: 6px;
+            border-radius: 6px;
             border: 1px solid #cceff5;
         }
 
@@ -1062,52 +999,48 @@ def top_nav_bar():
 
     # Create the top bar
     with st.container():
-        col1, col2, col3 = st.columns([1, 4, 1])
 
-        with col1:
-            # Hamburger menu popover
-            with st.popover("☰", use_container_width=False):
-                # Popover content without inner hamburger icon
-                st.markdown('<div class="popover-content">', unsafe_allow_html=True)
-                st.markdown('<div class="popover-header">Settings</div>', unsafe_allow_html=True)
+        # Hamburger menu popover
+        with st.popover("☰", use_container_width=False):
+            # Popover content without inner hamburger icon
+            st.markdown('<div class="popover-content">', unsafe_allow_html=True)
+            st.markdown('<div class="popover-header">Settings</div>', unsafe_allow_html=True)
 
-                # Access level selection
-                st.markdown("Access Level")
-                access_options = ["Internal", "Core", "Plus"]
-                current_access = st.session_state.get("access_level", "Internal")
+            # Access level selection
+            st.markdown("Access Level")
+            access_options = ["Internal", "Core", "Plus"]
+            current_access = st.session_state.get("access_level", "Internal")
 
-                # Create dropdown for access level
-                new_access = st.selectbox(
-                    "Choose credentials level:",
-                    access_options,
-                    index=access_options.index(current_access),
-                    key="popover_access_dropdown"
-                )
+            # Create dropdown for access level
+            new_access = st.selectbox(
+                "Choose credentials level:",
+                access_options,
+                index=access_options.index(current_access),
+                key="popover_access_dropdown"
+            )
 
-                # Update session state if changed
-                if new_access != current_access:
-                    st.session_state.access_level = new_access
-                    st.rerun()
+            # Update session state if changed
+            if new_access != current_access:
+                st.session_state.access_level = new_access
+                st.rerun()
 
-                # Dark mode toggle
-                dark_mode = st.toggle("Dark Mode",
-                                      value=st.session_state.get("dark_mode", False),
-                                      key="dark_mode_toggle")
-                if dark_mode != st.session_state.get("dark_mode", False):
-                    st.session_state.dark_mode = dark_mode
-                    st.rerun()
+            # Dark mode toggle
+            dark_mode = st.toggle("Dark Mode",
+                                  value=st.session_state.get("dark_mode", False),
+                                  key="dark_mode_toggle")
+            if dark_mode != st.session_state.get("dark_mode", False):
+                st.session_state.dark_mode = dark_mode
+                st.rerun()
 
-                # Logout button
-                if st.button("Logout", use_container_width=True, key="logout_btn"):
-                    st.session_state.authenticated = False
-                    st.rerun()
+            # Logout button
+            if st.button("Logout", use_container_width=True, key="logout_btn"):
+                st.info("Logout functionality would go here")
 
-                st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
+            st.markdown('</div>', unsafe_allow_html=True)  # Close popover-content
 
-        with col3:
-            st.markdown(
-                f'<div style="text-align: right; padding-top: 15px;"><span class="access-level">{st.session_state.access_level} Access</span></div>',
-                unsafe_allow_html=True)
+        st.markdown('</div>', unsafe_allow_html=True)  # Close top-bar-user
+
+        st.markdown('</div>', unsafe_allow_html=True)  # Close top-bar
 
 
 def main():

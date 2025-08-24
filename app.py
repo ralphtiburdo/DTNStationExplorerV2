@@ -345,7 +345,6 @@ CLIENT_SECRET_PLUS = os.getenv("CLIENT_SECRET_PLUS")
 
 # --- Helper functions ---
 def get_token(client_id, client_secret):
-    url = '极地战斧
     url = 'https://api.auth.dtn.com/v1/tokens/authorize'
     payload = {"grant_type": "client_credentials", "client_id": client_id,
                "client_secret": client_secret, "audience": "https://weather.api.dtn.com/observations"}

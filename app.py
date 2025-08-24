@@ -27,6 +27,28 @@ def login():
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
 
+        /* Hide Streamlit's default elements that might cause unwanted rectangles */
+        .stApp > header {
+            display: none !important;
+        }
+
+        .stApp > div:first-child {
+            padding-top: 0 !important;
+        }
+
+        /* Hide any empty containers or divs that might show up */
+        .stMarkdown:empty,
+        .stContainer:empty,
+        div[data-testid="stMarkdownContainer"]:empty {
+            display: none !important;
+        }
+
+        /* Hide the main container padding */
+        .main .block-container {
+            padding-top: 0 !important;
+            padding-bottom: 0 !important;
+        }
+
         /* Main container styling */
         .login-container {
             max-width: 420px;
@@ -104,13 +126,12 @@ def login():
 
         /* Streamlit input container styling */
         .stTextInput {
-            position: relative;
             margin-bottom: 24px;
         }
 
         /* Style the input field */
         .stTextInput > div > div > input {
-            padding: 20px 16px 8px 16px !important;
+            padding: 16px !important;
             border: 2px solid rgba(0, 114, 181, 0.2) !important;
             border-radius: 12px !important;
             background: rgba(255, 255, 255, 0.8) !important;
@@ -132,41 +153,20 @@ def login():
             outline: none !important;
         }
 
-        /* Style the label as floating label */
-        .stTextInput > label {
-            position: absolute !important;
-            left: 16px !important;
-            top: 50% !important;
-            transform: translateY(-50%) !important;
-            background: linear-gradient(135deg, #0072b5, #00a99d) !important;
-            background-clip: text !important;
-            -webkit-background-clip: text !important;
-            -webkit-text-fill-color: transparent !important;
-            font-size: 16px !important;
+        /* Style placeholders */
+        .stTextInput > div > div > input::placeholder {
+            color: rgba(0, 114, 181, 0.6) !important;
             font-weight: 500 !important;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
-            pointer-events: none !important;
-            z-index: 10 !important;
-            margin: 0 !important;
+            transition: opacity 0.3s ease !important;
         }
 
-        /* Move label up when input is focused or has value */
-        .stTextInput > div > div > input:focus ~ label,
-        .stTextInput > div > div > input:not([value=""]) ~ label {
-            top: 12px !important;
-            transform: translateY(0) !important;
-            font-size: 12px !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
+        .stTextInput > div > div > input:focus::placeholder {
+            opacity: 0.3 !important;
         }
 
-        /* Alternative approach - move label when input has content */
-        .stTextInput:has(input:not(:placeholder-shown)) > label {
-            top: 12px !important;
-            transform: translateY(0) !important;
-            font-size: 12px !important;
-            font-weight: 600 !important;
-            letter-spacing: 0.5px !important;
+        /* Hide the default Streamlit labels */
+        .stTextInput > label {
+            display: none !important;
         }
 
         /* Login button styling */
@@ -286,14 +286,14 @@ def login():
     </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
-    st.markdown('<div class="login-title">DTN Station Explorer</div>', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        # Username field with floating label effect
-        username = st.text_input("Username", placeholder=" ", key="username_input")
+        # Username field with placeholder
+        username = st.text_input("Username", placeholder="Username", key="username_input", label_visibility="collapsed")
 
-        # Password field with floating label effect
-        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
+        # Password field with placeholder
+        password = st.text_input("Password", type="password", placeholder="Password", key="password_input",
+                                 label_visibility="collapsed")
 
         submitted = st.form_submit_button("Sign In")
 

@@ -126,13 +126,12 @@ def login():
 
         /* Streamlit input container styling */
         .stTextInput {
-            position: relative;
             margin-bottom: 24px;
         }
 
         /* Style the input field */
         .stTextInput > div > div > input {
-            padding: 20px 16px 8px 16px !important;
+            padding: 16px !important;
             border: 2px solid rgba(0, 114, 181, 0.2) !important;
             border-radius: 12px !important;
             background: rgba(255, 255, 255, 0.8) !important;
@@ -154,63 +153,20 @@ def login():
             outline: none !important;
         }
 
-        /* Hide the default Streamlit label completely since it's interfering */
+        /* Style placeholders */
+        .stTextInput > div > div > input::placeholder {
+            color: rgba(0, 114, 181, 0.6) !important;
+            font-weight: 500 !important;
+            transition: opacity 0.3s ease !important;
+        }
+
+        .stTextInput > div > div > input:focus::placeholder {
+            opacity: 0.3 !important;
+        }
+
+        /* Hide the default Streamlit labels */
         .stTextInput > label {
             display: none !important;
-        }
-
-        /* Create our own floating labels using ::before pseudo-element */
-        .stTextInput:nth-of-type(1)::before {
-            content: 'Username';
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: linear-gradient(135deg, #0072b5, #00a99d);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        .stTextInput:nth-of-type(2)::before {
-            content: 'Password';
-            position: absolute;
-            left: 16px;
-            top: 50%;
-            transform: translateY(-50%);
-            background: linear-gradient(135deg, #0072b5, #00a99d);
-            background-clip: text;
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-size: 16px;
-            font-weight: 500;
-            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
-            pointer-events: none;
-            z-index: 10;
-        }
-
-        /* Move labels up when input is focused */
-        .stTextInput:nth-of-type(1):focus-within::before,
-        .stTextInput:nth-of-type(2):focus-within::before {
-            top: 12px;
-            transform: translateY(0);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
-        }
-
-        /* Move labels up when input has content (JavaScript will handle this) */
-        .stTextInput.has-content::before {
-            top: 12px;
-            transform: translateY(0);
-            font-size: 12px;
-            font-weight: 600;
-            letter-spacing: 0.5px;
         }
 
         /* Login button styling */
@@ -327,43 +283,17 @@ def login():
                 transform: translateY(0);
             }
         }
-    </style>
-
-    <script>
-        // Function to check if inputs have content and add class accordingly
-        function updateFloatingLabels() {
-            const textInputs = document.querySelectorAll('.stTextInput input');
-            textInputs.forEach((input, index) => {
-                const container = input.closest('.stTextInput');
-                if (input.value && input.value.trim() !== '') {
-                    container.classList.add('has-content');
-                } else {
-                    container.classList.remove('has-content');
-                }
-            });
-        }
-
-        // Run on page load
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(updateFloatingLabels, 100);
-        });
-
-        // Run periodically to catch Streamlit updates
-        setInterval(updateFloatingLabels, 500);
-
-        // Also run when inputs change
-        document.addEventListener('input', updateFloatingLabels);
-    </script>
-    """, unsafe_allow_html=True)
+    </style>""", unsafe_allow_html=True)
 
     st.markdown('<div class="login-container">', unsafe_allow_html=True)
 
     with st.form("login_form"):
-        # Username field with floating label effect
-        username = st.text_input("Username", placeholder=" ", key="username_input")
+        # Username field with placeholder
+        username = st.text_input("Username", placeholder="Username", key="username_input", label_visibility="collapsed")
 
-        # Password field with floating label effect
-        password = st.text_input("Password", type="password", placeholder=" ", key="password_input")
+        # Password field with placeholder
+        password = st.text_input("Password", type="password", placeholder="Password", key="password_input",
+                                 label_visibility="collapsed")
 
         submitted = st.form_submit_button("Sign In")
 

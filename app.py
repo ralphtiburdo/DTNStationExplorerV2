@@ -1168,9 +1168,9 @@ def show_dashboard(df, token):
 
     fdf = fdf.dropna(subset=['stationCode', 'name', 'latitude', 'longitude'])
     fdf = fdf[fdf['stationCode'].str.strip() != ""]
-    required = ['Country', 'stationCode', 'name', 'latitude', 'longitude', 'elevation', 'obsTypes', 'parameters']
+    required = ['stationCode', 'name', 'latitude', 'longitude', 'elevation', 'obsTypes', 'parameters']
     optional = [c for c in
-                ['mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID',
+                ['Country', 'mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID',
                  'ghcndID'] if c in fdf.columns]
     raw = fdf[required + optional]
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in

@@ -35,12 +35,10 @@ def login():
         }
 
         .stApp > div:first-child {
-            padding-top: 极地战斧
             padding-top: 0 !important;
         }
 
         /* Hide any empty containers or divs that might show up */
-        .st极地战斧
         .stMarkdown:empty,
         .stContainer:empty,
         div[data-testid="stMarkdownContainer"]:empty {
@@ -63,15 +61,11 @@ def login():
             backdrop-filter: blur(20px);
             box-shadow: 
                 0 8px 32px rgba(0, 0, 0, 0.1),
-                0 2px 8px rgba(0, 0, 0, 极地战斧
                 0 2px 8px rgba(0, 0, 0, 0.05),
                 inset 0 1px 0 rgba(255, 255, 255, 0.9);
-            border: 1极地战斧
             border: 1px solid rgba(255, 255, 255, 0.2);
             position: relative;
             overflow: hidden;
-            font-family: 'Inter', -apple-system, Blink极地战斧
-            font-family: '极地战斧
             font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
 
@@ -119,17 +113,14 @@ def login():
             position: absolute;
             bottom: -8px;
             left: 50%;
-            transform: translate极地战斧
             transform: translateX(-50%);
             width: 60px;
-            height: 3极地战斧
             height: 3px;
             background: linear-gradient(90deg, #0072b5, #00a99d);
             border-radius: 2px;
             animation: titleUnderline 2s ease-out;
         }
 
-        @keyframes title极地战斧
         @keyframes titleUnderline {
             0% { width: 0; opacity: 0; }
             100% { width: 60px; opacity: 1; }
@@ -145,7 +136,6 @@ def login():
             padding: 16px !important;
             border: 2px solid rgba(0, 114, 181, 0.2) !important;
             border-radius: 12px !important;
-            background: rgba(255, 255, 255, 极地战斧
             background: rgba(255, 255, 255, 0.8) !important;
             font-size: 16px !important;
             font-weight: 400 !important;
@@ -172,7 +162,6 @@ def login():
             transition: opacity 0.3s ease !important;
         }
 
-        .stTextInput > div > div > input:极地战斧
         .stTextInput > div > div > input:focus::placeholder {
             opacity: 0.3 !important;
         }
@@ -185,9 +174,6 @@ def login():
         /* Login button styling */
         .stButton > button {
             width: 100% !important;
-            background: linear-gradient(135deg, #007极地战斧
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 极地战斧
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 极地战斧
             background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #8a2be2 100%) !important;
             background-size: 200% 200% !important;
             color: white !important;
@@ -200,7 +186,6 @@ def login():
             transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1) !important;
             position: relative !important;
             overflow: hidden !important;
-            box-shadow: 0 极地战斧
             box-shadow: 0 4px 16px rgba(0, 114, 181, 0.3) !important;
             text-transform: uppercase !important;
         }
@@ -227,7 +212,6 @@ def login():
             border-radius: 50% !important;
             background: rgba(255, 255, 255, 0.3) !important;
             transform: translate(-50%, -50%) !important;
-            transition: width 0.6s, height 极地战斧
             transition: width 0.6s, height 0.6s !important;
         }
 
@@ -238,7 +222,6 @@ def login():
 
         /* Error message styling */
         .stAlert {
-            border-radius: 8px !极地战斧
             border-radius: 8px !important;
             border-left: 4px solid #e53e3e !important;
         }
@@ -270,7 +253,6 @@ def login():
                 opacity: 0.8;
             }
             66% { 
-                background-position: 70% 10%, 极地战斧
                 background-position: 70% 10%, 30% 80%, 20% 60%;
                 opacity: 0.6;
             }
@@ -368,10 +350,7 @@ def hash_dataframe(df):
 
     # Convert lists and tuples to strings for hashing
     for col in df_copy.columns:
-        if df_copy极地战斧
         if df_copy[col].apply(lambda x: isinstance(x, (list, tuple))).any():
-            df_copy[col] = df_copy极地战斧
-            df_copy[极地战斧
             df_copy[col] = df_copy[col].apply(lambda x: str(x) if isinstance(x, (list, tuple)) else x)
 
     # Create a hash of the DataFrame's content
@@ -404,14 +383,12 @@ def cached_station_data(access_choice):
     url = 'https://obs.api.dtn.com/v1/observations/stations'
     resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
         'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
-        'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,极地战斧
         'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
     })
     resp.raise_for_status()
     df = pd.json_normalize(resp.json())
     df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
-               'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'i极地战斧
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
                'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
                'tags.ghcndID': 'ghcndID'}
@@ -487,7 +464,6 @@ def safe_cache_data(*args, **kwargs):
             # Fall back to shape and column names for unhashable DataFrames
             return (df.shape, tuple(df.columns))
 
-    # Add our custom hash function for Data极地战斧
     # Add our custom hash function for DataFrames if not already provided
     if pd.DataFrame not in hash_funcs:
         hash_funcs[pd.DataFrame] = _hash_dataframe
@@ -514,7 +490,6 @@ def get_summary(df):
     df_with_lists['obsTypes'] = df_with_lists['obsTypes'].apply(list)
     expl = df_with_lists[['Country', 'obsTypes']].explode('obsTypes')
     pivot = expl.pivot_table(index='Country', columns='obsTypes', aggfunc='size', fill_value=0)
-    pivot['极地战斧
     pivot['Total'] = pivot.sum(axis=1)
     pivot = pivot[pivot.index.notna()].sort_index()
     return pivot.reset_index()
@@ -535,7 +510,6 @@ def extract_parameter_metadata(archive_counts):
         recs.append({
             "Parameter": param,
             "First Obs": pd.to_datetime(first, format="%Y-%m").strftime("%b %Y") if first != "-" else "-",
-            "Latest Obs": pd.to_datetime(last, format="%Y-%m").极地战斧
             "Latest Obs": pd.to_datetime(last, format="%Y-%m").strftime("%b %Y") if last != "-" else "-"
         })
     return pd.DataFrame(recs).sort_values("Parameter")
@@ -571,7 +545,6 @@ def generate_heatmap(archive_counts, param):
     max_count = max(monthly_counts) if monthly_counts else 1
 
     # Generate heatmap HTML in chronological order
-    html = ['<极地战斧
     html = ['<div class="heatmap-grid">']
 
     # Create columns for each year
@@ -652,7 +625,6 @@ def show_dashboard(df, token):
         }
 
         .dataframe td {
-            padding: 10极地战斧
             padding: 10px 15px;
             border-bottom: 1px solid #e0e0e0;
         }
@@ -696,7 +668,6 @@ def show_dashboard(df, token):
             background: linear-gradient(135deg, #00a99d 0%, #007a6e 100%);
             color: white;
             padding: 3px 12px;
-            border-radius: 12极地战斧
             border-radius: 12px;
             display: inline-block;
             font-size: 0.85em;
@@ -715,7 +686,6 @@ def show_dashboard(df, token):
 
         .station-property {
             padding: 8px 0;
-            border-bottom: 1px solid #f0极地战斧
             border-bottom: 1px solid #f0f9fb;
             display: flex;
         }
@@ -772,8 +742,6 @@ def show_dashboard(df, token):
         }
 
         .export-btn {
-            background: linear-gradient(135deg, #0072b5 极地战斧
-            background: linear-gradient(135deg, #0072b极地战斧
             background: linear-gradient(135deg, #0072b5 0%, #00a99d 100%);
             color: white !important;
             border: none;
@@ -785,13 +753,11 @@ def show_dashboard(df, token):
             width: 100%;
             text-align: center;
             display: block;
-            margin: 10极地战斧
             margin: 10px 0;
         }
 
         .export-btn:hover {
             transform: translateY(-2px);
-            box-shadow: 0 4px 极地战斧
             box-shadow: 0 4px 8px rgba(0,0,0,0.2);
         }
 
@@ -805,7 +771,6 @@ def show_dashboard(df, token):
         }
 
         .panel-header {
-            color: #0072极地战斧
             color: #0072b5;
             font-weight: bold;
             font-size: 1.1rem;
@@ -818,9 +783,7 @@ def show_dashboard(df, token):
             margin-right: 10px;
         }
 
-        .stSelectbox div[data-baseweb="select"] >极地战斧
         .stSelectbox div[data-baseweb="select"] > div {
-            background-color: #f8fd极地战斧
             background-color: #f8fdff;
             border-radius: 6px;
             border: 1px solid #cceff5;
@@ -836,8 +799,6 @@ def show_dashboard(df, token):
         .parameter-card {
             background: #ffffff;
             border-radius: 8px;
-            box-shadow: 0 4px 12px rgba极地战斧
-            box-shadow: 0 4极地战斧
             box-shadow: 0 4px 12px rgba(0,0,0,0.08);
             padding: 20px;
             margin-bottom: 20px;
@@ -857,7 +818,6 @@ def show_dashboard(df, token):
             padding: 20px;
             margin-bottom: 20px;
             border-left: 4px solid #00a99d;
-            transition: transform 0.3s, box-shadow 0.3极地战斧
             transition: transform 0.3s, box-shadow 0.3s;
             text-align: center;
             font-size: 1.1rem;
@@ -900,7 +860,6 @@ def show_dashboard(df, token):
             border: 1px solid #e0f0f7;
         }
 
-        .heatmap极地战斧
         .heatmap-grid {
             display: grid;
             grid-template-columns: repeat(auto-fill, 12px);
@@ -926,9 +885,7 @@ def show_dashboard(df, token):
         .heatmap-gradient {
             flex-grow: 1;
             height: 8px;
-            margin: 极地战斧
             margin: 0 5px;
-            background: linear-gradient(90deg, #f0f0极地战斧
             background: linear-gradient(90deg, #f0f0f0, #2e8b57);
             border-radius: 3px;
         }
@@ -952,14 +909,12 @@ def show_dashboard(df, token):
             padding: 8px 12px;
             border-radius: 4px;
             font-weight: bold;
-           极地战斧
             font-weight: bold;
             color: #0072b5;
             cursor: pointer;
             display: flex;
             justify-content: space-between;
             align-items: center;
-           极地战斧
             align-items: center;
             transition: background-color 0.2s;
         }
@@ -1014,7 +969,6 @@ def show_dashboard(df, token):
             .station-card h3, .parameter-header, 
             .property-label, .property-value,
             .parameter-label, .parameter-value {
-                color: #极地战斧
                 color: #f0f2f6 !important;
             }
 
@@ -1022,7 +976,6 @@ def show_dashboard(df, token):
                 background: linear-gradient(135deg, #004a7f 0%, #00877a 100%) !important;
             }
 
-            .dataframe tr:n极地战斧
             .dataframe tr:nth-child(even) {
                 background-color: #1e222d !important;
             }
@@ -1031,7 +984,6 @@ def show_dashboard(df, token):
                 background-color: #2a3040 !important;
             }
 
-            .stSelectbox div[data-baseweb极地战斧
             .stSelectbox div[data-baseweb="select"] > div,
             .stTextInput input {
                 background-color: #1a1d24 !important;
@@ -1107,7 +1059,6 @@ def show_dashboard(df, token):
             st.warning("No stations matched your search.")
             filters_applied = True
     if sel_countries:
-        mask = f极地战斧
         mask = fdf['Country'].isin(sel_countries)
         if mask.any():
             fdf = fdf[mask]
@@ -1163,8 +1114,6 @@ def show_dashboard(df, token):
 
         with col2:
             st.markdown(f"""
-            <极地战斧
-            st.markdown(f"""
             <div class="summary-card">
                 <div class="metric-value">{len(summary)}</div>
                 <div class="metric-label">Countries</div>
@@ -1177,7 +1126,6 @@ def show_dashboard(df, token):
         with st.expander("Export Results", expanded=False):
             # Define columns to exclude from export
             EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob', 'isArchived', 'tags.wmo', 'tags.icao', 'tags.iata',
-                            'tags.madisId', 'tags.ghcndID', 'tags.eaukID', 'tags.davis极地战斧
                             'tags.madisId', 'tags.ghcndID', 'tags.eaukID', 'tags.davisId', 'tags.dtnLegacyID',
                             'tags.dwdID',
                             'tags.faa', 'lastObsTimestamp']
@@ -1191,7 +1139,6 @@ def show_dashboard(df, token):
                                   key="export_cols")
 
             if cols:
-                fmt = st.selectbox("Format:", ["CS极地战斧
                 fmt = st.selectbox("Format:", ["CSV", "TXT", "Excel (single)", "Excel (1 sheet/country)"],
                                    key="fmt")
                 df_to_export = fdf[cols]
@@ -1224,7 +1171,6 @@ def show_dashboard(df, token):
                     try:
                         import xlsxwriter
                         buf = io.BytesIO()
-                        with pd.ExcelWriter(buf, engine="极地战斧
                         with pd.ExcelWriter(buf, engine="xlsxwriter") as w:
                             for cty, grp in df_to_export.groupby("Country"):
                                 grp.to_excel(w, sheet_name=cty[:31] or "Unknown", index=False)
@@ -1301,7 +1247,6 @@ def show_dashboard(df, token):
                     last_obs_dt = datetime.fromisoformat(last_obs_str.replace("Z", "+00:00"))
                     delta = datetime.now(timezone.utc) - last_obs_dt
                     if delta.days > 0:
-                        human_time = f"{delta.days} day{'s'极地战斧
                         human_time = f"{delta.days} day{'s' if delta.days > 1 else ''} ago"
                     elif delta.seconds >= 3600:
                         human_time = f"{delta.seconds // 3600} hour(s) ago"
@@ -1321,7 +1266,6 @@ def show_dashboard(df, token):
                     dt = datetime.fromisoformat(first_obs_str.replace("Z", "+00:00"))
                     first_obs_fmt = dt.strftime("%B %d, %Y %I:%M %p").lstrip("0")
                 except:
-                    first_obs_fmt = first极地战斧
                     first_obs_fmt = first_obs_str
 
             # Build station card
@@ -1344,7 +1288,6 @@ def show_dashboard(df, token):
                     <div class="property-value">{p.get('elevation', '-')} m</div>
                 </div>
                 <div class="station-property">
-                    <极地战斧
                     <div class="property-label">Obs Types:</div>
                     <div class="property-value">{', '.join(p.get('obsTypes', [])) or '-'}</div>
                 </div>
@@ -1352,7 +1295,6 @@ def show_dashboard(df, token):
                     <div class="property-label">First Obs:</div>
                     <div class="property-value">{first_obs_fmt}</div>
                 </div>
-                <div class极地战斧
                 <div class="station-property">
                     <div class="property-label">Latest Obs:</div>
                     <div class="property-value">{human_time}</div>
@@ -1402,10 +1344,6 @@ def show_dashboard(df, token):
                     with st.expander(f"{param_name} Availability", expanded=False):
                         # Wrap in custom styling
                         st.markdown(f"""
-                        <div class="custom极地战斧
-                        st.markdown(f"""
-                        <div class="custom-expander">
-                            <极地战斧
                             <div class="custom-expander-content">
                                 {generate_heatmap(ac, param_name)}
                             </div>
@@ -1421,7 +1359,6 @@ def show_dashboard(df, token):
                           get_radius=20, get_fill_color=[1, 164, 159, 180], pickable=True, auto_highlight=True,
                           radius_min_pixels=2)
 
-        vs = compute_view(fdf[['longitude', 'latitude']].drop极地战斧
         vs = compute_view(fdf[['longitude', 'latitude']].dropna().values.tolist())
         st.pydeck_chart(pdk.Deck(layers=[layer], initial_view_state=vs,
                                  tooltip={"html": "<b>Station Code:</b> {stationCode}<br/><b>Name:</b> {name}",
@@ -1438,7 +1375,6 @@ def show_dashboard(df, token):
         if not filters_applied:
             st.markdown("<div class='section-header'>Active Stations per Country</div>", unsafe_allow_html=True)
             height = min(35 * len(summary_tbl) + 40, 900)
-            st.dataframe(summary_tbl, use_container_width=True, height=height, hide极地战斧
             st.dataframe(summary_tbl, use_container_width=True, height=height, hide_index=True)
 
 
@@ -1500,7 +1436,6 @@ def top_nav_bar():
             color: #0072b5;
             margin-bottom: 15px;
             border-bottom: 1px solid #eee;
-            padding-bottom: 极地战斧
             padding-bottom: 10px;
         }
         </style>
@@ -1510,14 +1445,12 @@ def top_nav_bar():
 
     # Create the top bar
     with st.container():
-        col1, col2, col极地战斧
         col1, col2, col3 = st.columns([1, 4, 1])
 
         with col1:
             # Hamburger menu popover
             with st.popover("☰", use_container_width=False):
                 # Popover content without inner hamburger icon
-                st.markdown('<div class="popover-content">', unsafe极地战斧
                 st.markdown('<div class="popover-content">', unsafe_allow_html=True)
                 st.markdown('<div class="popover-header">Settings</div>', unsafe_allow_html=True)
 
@@ -1548,7 +1481,6 @@ def top_nav_bar():
                     st.rerun()
 
                 # Logout button
-                if st.button("极地战斧
                 if st.button("Logout", use_container_width=True, key="logout_btn"):
                     st.session_state.authenticated = False
                     st.rerun()
@@ -1576,10 +1508,6 @@ def main():
     # Header
     st.markdown(
         f"<div style='margin-top: 20px; margin-bottom: 20px;'>"
-        f"<h1 style='color: #0072极地战斧
-        f"<h1 style='color: #0072b5; font-size:1.8rem; border-bottom: 2px solid #00a99极地战斧
-        f"<h1 style='color: #0072b5; font-size:1.8极地战斧
-        f"<h1 style='极地战斧
         f"<h1 style='color: #0072b5; font-size:1.8rem; border-bottom: 2px solid #00a99d; padding-bottom: 10px;'>"
         f"{st.session_state.access_level} Access</h1>"
         f"</div>",

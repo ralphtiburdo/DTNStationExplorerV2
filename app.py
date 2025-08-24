@@ -25,29 +25,244 @@ if 'login_attempted' not in st.session_state:
 def login():
     st.markdown("""
     <style>
+        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
+
         .login-container {
-            max-width: 400px;
-            margin: 100px auto;
-            padding: 30px;
-            border-radius: 10px;
-            box-shadow: 0 4px 20px rgba(0,0,0,0.15);
-            background: white;
+            max-width: 420px;
+            margin: 80px auto;
+            padding: 40px 35px;
+            border-radius: 20px;
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            box-shadow: 
+                0 8px 32px rgba(0, 114, 181, 0.12),
+                0 2px 16px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            font-family: 'Inter', -apple-system, BlinkMacSystemFont, sans-serif;
         }
+
+        .login-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(0, 114, 181, 0.05),
+                transparent
+            );
+            transition: left 0.6s ease;
+        }
+
+        .login-container:hover {
+            transform: translateY(-4px);
+            box-shadow: 
+                0 12px 40px rgba(0, 114, 181, 0.18),
+                0 4px 20px rgba(0, 0, 0, 0.12);
+        }
+
+        .login-container:hover::before {
+            left: 100%;
+        }
+
         .login-title {
             text-align: center;
-            color: #0072b5;
-            margin-bottom: 30px;
-            font-size: 24px;
-            font-weight: bold;
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #667eea 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            margin-bottom: 35px;
+            font-size: 28px;
+            font-weight: 700;
+            letter-spacing: -0.5px;
+            position: relative;
+            animation: titleGlow 3s ease-in-out infinite;
         }
-        .stButton>button {
+
+        @keyframes titleGlow {
+            0%, 100% { filter: brightness(1); }
+            50% { filter: brightness(1.2); }
+        }
+
+        .login-title::after {
+            content: '';
+            position: absolute;
+            bottom: -8px;
+            left: 50%;
+            width: 60px;
+            height: 3px;
+            background: linear-gradient(135deg, #0072b5, #00a99d);
+            border-radius: 2px;
+            transform: translateX(-50%) scaleX(0);
+            animation: underlineGrow 1s ease-out 0.5s forwards;
+        }
+
+        @keyframes underlineGrow {
+            to { transform: translateX(-50%) scaleX(1); }
+        }
+
+        /* Input field styling */
+        .stTextInput > div > div > input {
+            background: rgba(255, 255, 255, 0.8) !important;
+            border: 2px solid rgba(0, 114, 181, 0.1) !important;
+            border-radius: 12px !important;
+            padding: 14px 18px !important;
+            font-size: 15px !important;
+            font-family: 'Inter', sans-serif !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            backdrop-filter: blur(10px) !important;
+            color: #2d3748 !important;
+            font-weight: 400 !important;
+        }
+
+        .stTextInput > div > div > input:focus {
+            border-color: #0072b5 !important;
+            box-shadow: 
+                0 0 0 3px rgba(0, 114, 181, 0.1),
+                0 4px 12px rgba(0, 114, 181, 0.15) !important;
+            transform: translateY(-1px) !important;
+            background: rgba(255, 255, 255, 0.95) !important;
+        }
+
+        .stTextInput > div > div > input::placeholder {
+            color: #a0aec0 !important;
+            font-weight: 400 !important;
+        }
+
+        /* Label styling */
+        .stTextInput > label {
+            color: #4a5568 !important;
+            font-weight: 500 !important;
+            font-size: 14px !important;
+            margin-bottom: 8px !important;
+            font-family: 'Inter', sans-serif !important;
+        }
+
+        /* Button styling */
+        .stButton > button {
+            width: 100% !important;
+            background: linear-gradient(135deg, #0072b5 0%, #00a99d 50%, #667eea 100%) !important;
+            background-size: 200% 200% !important;
+            color: white !important;
+            border: none !important;
+            padding: 16px 24px !important;
+            border-radius: 12px !important;
+            font-size: 16px !important;
+            font-weight: 600 !important;
+            font-family: 'Inter', sans-serif !important;
+            letter-spacing: 0.3px !important;
+            cursor: pointer !important;
+            position: relative !important;
+            overflow: hidden !important;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1) !important;
+            animation: gradientShift 3s ease infinite !important;
+        }
+
+        @keyframes gradientShift {
+            0%, 100% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+        }
+
+        .stButton > button::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: -100%;
             width: 100%;
-            background: linear-gradient(135deg, #0072b5 0%, #00a99d 100%);
-            color: white;
-            border: none;
-            padding: 12px;
-            border-radius: 5px;
-            font-size: 16px;
+            height: 100%;
+            background: linear-gradient(
+                90deg,
+                transparent,
+                rgba(255, 255, 255, 0.2),
+                transparent
+            );
+            transition: left 0.5s ease;
+        }
+
+        .stButton > button:hover {
+            transform: translateY(-2px) !important;
+            box-shadow: 
+                0 8px 25px rgba(0, 114, 181, 0.3),
+                0 4px 12px rgba(0, 0, 0, 0.15) !important;
+            filter: brightness(1.05) !important;
+        }
+
+        .stButton > button:hover::before {
+            left: 100%;
+        }
+
+        .stButton > button:active {
+            transform: translateY(0) !important;
+            transition: transform 0.1s !important;
+        }
+
+        /* Error message styling */
+        .stAlert {
+            background: rgba(254, 226, 226, 0.8) !important;
+            border: 1px solid rgba(252, 165, 165, 0.5) !important;
+            border-radius: 10px !important;
+            backdrop-filter: blur(10px) !important;
+            animation: shake 0.5s ease-in-out, fadeIn 0.3s ease-out !important;
+        }
+
+        @keyframes shake {
+            0%, 100% { transform: translateX(0); }
+            25% { transform: translateX(-5px); }
+            75% { transform: translateX(5px); }
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; transform: translateY(-10px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+
+        /* Form container */
+        .stForm {
+            animation: slideUp 0.6s ease-out 0.2s both;
+        }
+
+        @keyframes slideUp {
+            from { 
+                opacity: 0; 
+                transform: translateY(20px); 
+            }
+            to { 
+                opacity: 1; 
+                transform: translateY(0); 
+            }
+        }
+
+        /* Loading animation for button */
+        .stButton > button:focus {
+            background: linear-gradient(135deg, #005a8b 0%, #007d7a 50%, #5a67d8 100%) !important;
+        }
+
+        /* Responsive design */
+        @media (max-width: 480px) {
+            .login-container {
+                margin: 40px 20px;
+                padding: 30px 25px;
+            }
+
+            .login-title {
+                font-size: 24px;
+            }
+        }
+
+        /* Add subtle floating animation */
+        .login-container {
+            animation: float 6s ease-in-out infinite;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0px); }
+            50% { transform: translateY(-3px); }
         }
     </style>
     """, unsafe_allow_html=True)
@@ -70,8 +285,6 @@ def login():
                 st.error("Invalid username or password")
 
     st.markdown('</div>', unsafe_allow_html=True)
-
-
 # Show login screen if not authenticated
 if not st.session_state.authenticated:
     login()

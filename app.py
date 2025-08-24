@@ -739,6 +739,13 @@ def show_dashboard(df, token):
     filters_applied = False
     show = False
 
+    # Update the filter processing section in show_dashboard function
+
+    # Process filters
+    fdf = df.copy()
+    filters_applied = False
+    show = False
+
     if search.strip():
         terms = [t.strip().lower() for t in re.split(r"[,\s]+", search) if t.strip()]
         mask = fdf[['stationCode', 'icao', 'wmo', 'mgID', 'madisId', 'iata', 'faa', 'name', 'davisId', 'dtnLegacyID',
@@ -751,6 +758,7 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations matched your search.")
             filters_applied = True
+
     if sel_countries:
         mask = fdf['Country'].isin(sel_countries)
         if mask.any():
@@ -760,18 +768,20 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations in the selected countries")
             filters_applied = True
+
     if sel_obs:
-        # Handle tuples in filter
+        # Handle tuples in filter - check if ALL selected obs types are in the tuple
         mask = fdf['obsTypes'].apply(lambda tup: all(o in tup for o in sel_obs))
         if mask.any():
             fdf = fdf[mask]
             show = True
             filters_applied = True
         else:
-            st.warning("No stations have the selected observation types")
+            st.warning("No stations have all the selected observation types")
             filters_applied = True
+
     if sel_params:
-        # Handle tuples in filter
+        # Handle tuples in filter - check if ALL selected parameters are in the tuple
         mask = fdf['parameters'].apply(lambda tup: all(p in tup for p in sel_params))
         if mask.any():
             fdf = fdf[mask]
@@ -780,7 +790,7 @@ def show_dashboard(df, token):
         else:
             st.warning("No stations have all the selected parameters")
             filters_applied = True
-
+            
     # Load summary data
     summary = get_summary(df)
     summary_tbl = summary.drop(columns=['obsTypes'], errors='ignore').rename(columns={'Total': 'Station Count'})

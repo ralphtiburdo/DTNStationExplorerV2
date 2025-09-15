@@ -1341,20 +1341,19 @@ def show_dashboard(df, token):
                         </div>
                         """, unsafe_allow_html=True)
 
-            # Add download button for parameter counts
-            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-            param_counts_df = get_parameter_counts(ac)
-            csv = param_counts_df.to_csv(index=False)
-            st.download_button(
-                label="Download Parameter Counts",
-                data=csv,
-                file_name=f"{sel}_parameter_counts.csv",
-                mime="text/csv",
-                use_container_width=True
-            )
-
-        else:
-            st.info("No parameter archive metadata available.")
+                # Add download button for parameter counts
+                st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+                param_counts_df = get_parameter_counts(ac)
+                csv = param_counts_df.to_csv(index=False)
+                st.download_button(
+                    label="Download Parameter Counts",
+                    data=csv,
+                    file_name=f"{sel}_parameter_counts.csv",
+                    mime="text/csv",
+                    use_container_width=True
+                )
+            else:
+                st.info("No parameter archive metadata available.")
 
     # Main content area - Map and Table
     if show and not fdf.empty:

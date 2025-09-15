@@ -598,18 +598,18 @@ def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
                 status_placeholder.error(f"Failed after {retries} retries.")
                 return {}
 
+
 def get_parameter_counts(archive_counts):
-    """Create a DataFrame with parameter observation counts by year"""
-    # Extract all unique years from the archive counts
-    all_years = set()
+    """Create a DataFrame with parameter observation counts by month"""
+    # Extract all unique year-month combinations from the archive counts
+    all_months = set()
     for param, months in (archive_counts or {}).items():
         for month_key in months.keys():
             if '-' in month_key:
-                year = month_key.split('-')[0]
-                all_years.add(year)
+                all_months.add(month_key)
 
-    # Sort years in ascending order
-    sorted_years = sorted(all_years)
+    # Sort months in chronological order
+    sorted_months = sorted(all_months, key=lambda x: tuple(map(int, x.split('-'))))
 
     # Create a list to store records
     recs = []
@@ -618,16 +618,14 @@ def get_parameter_counts(archive_counts):
         # Initialize a dictionary for this parameter
         param_data = {"parameter": param}
 
-        # Initialize all years to 0
-        for year in sorted_years:
-            param_data[year] = 0
+        # Initialize all months to 0
+        for month in sorted_months:
+            param_data[month] = 0
 
-        # Sum counts by year
+        # Add counts for each month
         for month_key, count in months.items():
-            if '-' in month_key:
-                year = month_key.split('-')[0]
-                if year in param_data:
-                    param_data[year] += count
+            if month_key in param_data:
+                param_data[month_key] = count
 
         recs.append(param_data)
 
@@ -1372,9 +1370,9 @@ def show_dashboard(df, token):
                 if not param_counts_df.empty:
                     csv = param_counts_df.to_csv(index=False, sep=';')
                     st.download_button(
-                        label="Download Parameter Counts by Year",
+                        label="Download Parameter Counts by Month",
                         data=csv,
-                        file_name=f"{sel}_parameter_counts_by_year.csv",
+                        file_name=f"{sel}_parameter_counts_by_month.csv",
                         mime="text/csv",
                         use_container_width=True
                     )

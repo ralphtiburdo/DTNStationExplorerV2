@@ -581,7 +581,7 @@ def drop_blank_columns(df):
 
 def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
     url = "https://obs.api.dtn.com/v2/observations/stations"
-    params = {"by": "stationCodes", "stationCodes": code, "isArchive": "true", "archiveCounts": "true"}
+    params = {"by": "stationCodes", "stationCodes": code, "isArchive": "false", "archiveCounts": "true"}
     for attempt in range(retries):
         try:
             if attempt > 0 and status_placeholder:
@@ -1332,6 +1332,211 @@ def show_dashboard(df, token):
                         """, unsafe_allow_html=True)
             else:
                 st.info("No parameter archive metadata available.")
+
+    def create_parameter_availability_export(archive_counts):
+        """Create a DataFrame with observation counts for all parameters"""
+        if not archive_counts:
+            return pd.DataFrame()
+
+        data = []
+        for param, months in archive_counts.items():
+            if not isinstance(months, dict):
+                continue
+
+            # Calculate total observations for this parameter
+            total_obs = sum(months.values())
+
+            # Get date range
+            keys = sorted(months.keys(), key=lambda x: tuple(map(int, x.split('-'))))
+            first_date = keys[0] if keys else "-"
+            last_date = keys[-1] if keys else "-"
+
+            # Format dates
+            try:
+                first_formatted = pd.to_datetime(first_date, format="%Y-%m").strftime(
+                    "%b %Y") if first_date != "-" else "-"
+                last_formatted = pd.to_datetime(last_date, format="%Y-%m").strftime(
+                    "%b %Y") if last_date != "-" else "-"
+            except:
+                first_formatted = first_date
+                last_formatted = last_date
+
+            # Calculate date span in months
+            if first_date != "-" and last_date != "-":
+                try:
+                    first_dt = pd.to_datetime(first_date, format="%Y-%m")
+                    last_dt = pd.to_datetime(last_date, format="%Y-%m")
+                    months_span = (last_dt - first_dt).days / 30.44  # Average days per month
+                    months_span = max(1, round(months_span))
+                except:
+                    months_span = len(months)
+            else:
+                months_span = len(months)
+
+            # Calculate average observations per month
+            avg_per_month = round(total_obs / months_span) if months_span > 0 else 0
+
+            data.append({
+                "Parameter": param,
+                "Total Observations": total_obs,
+                "First Observation": first_formatted,
+                "Latest Observation": last_formatted,
+                "Active Months": len(months),
+                "Avg Obs/Month": avg_per_month
+            })
+
+        df = pd.DataFrame(data)
+        return df.sort_values("Total Observations", ascending=False) if not df.empty else df
+
+    # Add this section in the sidebar after the parameter metadata cards
+    # Replace the existing parameter metadata section in show_dashboard() function:
+
+    # Parameter metadata table
+    ac = p.get("archiveCounts", {})
+    if ac:
+        st.markdown("<div class='section-header'>Parameter Metadata</div>", unsafe_allow_html=True)
+        param_df = extract_parameter_metadata(ac)
+
+        # Create card for each parameter
+        for _, row in param_df.iterrows():
+            param_name = row['Parameter']
+
+            param_card = f"""
+            <div class="parameter-card">
+                <div class="parameter-header">{param_name}</div>
+                <div class="parameter-row">
+                    <div class="parameter-label">First Obs:</div>
+                    <div class="parameter-value">{row['First Obs']}</div>
+                </div>
+                <div class="parameter-row">
+                    <div class="parameter-label">Latest Obs:</div>
+                    <div class="parameter-value">{row['Latest Obs']}</div>
+                </div>
+            </div>
+            """
+            st.markdown(param_card, unsafe_allow_html=True)
+
+            # Use expander for heatmap with custom label
+            with st.expander(f"{param_name} Availability", expanded=False):
+                # Wrap in custom styling
+                st.markdown(f"""
+                <div class="custom-expander">
+                    <div class="custom-expander-content">
+                        {generate_heatmap(ac, param_name)}
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+
+        # Add Parameter Availability Export Section
+        st.markdown("<div class='section-header'>Parameter Availability Export</div>", unsafe_allow_html=True)
+
+        # Create the parameter availability DataFrame
+        availability_df = create_parameter_availability_export(ac)
+
+        if not availability_df.empty:
+            # Display the summary table
+            st.markdown("""
+            <div class="parameter-card">
+                <div class="parameter-header">Observation Summary</div>
+                <div style="margin-top: 10px;">
+                    <small>Total observations per parameter with date ranges and activity metrics</small>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+            # Show the table
+            st.dataframe(
+                availability_df,
+                use_container_width=True,
+                hide_index=True,
+                height=min(35 * len(availability_df) + 40, 300)
+            )
+
+            # Export options
+            col1, col2 = st.columns(2)
+
+            with col1:
+                # CSV Download
+                csv_data = availability_df.to_csv(index=False)
+                st.download_button(
+                    label="📊 Download CSV",
+                    data=csv_data,
+                    file_name=f"parameter_availability_{sel}.csv",
+                    mime="text/csv",
+                    use_container_width=True,
+                    help="Download parameter observation counts as CSV"
+                )
+
+            with col2:
+                # Excel Download (if xlsxwriter is available)
+                try:
+                    import xlsxwriter
+                    import io
+
+                    # Create Excel file in memory
+                    excel_buffer = io.BytesIO()
+                    with pd.ExcelWriter(excel_buffer, engine='xlsxwriter') as writer:
+                        # Write main summary
+                        availability_df.to_excel(writer, sheet_name='Parameter Summary', index=False)
+
+                        # Create detailed monthly breakdown sheet
+                        monthly_data = []
+                        for param, months in ac.items():
+                            if isinstance(months, dict):
+                                for month, count in months.items():
+                                    monthly_data.append({
+                                        'Parameter': param,
+                                        'Month': month,
+                                        'Year': month.split('-')[0] if '-' in month else month,
+                                        'Month_Name': pd.to_datetime(month, format="%Y-%m").strftime(
+                                            "%B") if '-' in month else month,
+                                        'Observation_Count': count
+                                    })
+
+                        if monthly_data:
+                            monthly_df = pd.DataFrame(monthly_data)
+                            monthly_df.to_excel(writer, sheet_name='Monthly Breakdown', index=False)
+
+                    st.download_button(
+                        label="📈 Download Excel",
+                        data=excel_buffer.getvalue(),
+                        file_name=f"parameter_availability_{sel}.xlsx",
+                        mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                        use_container_width=True,
+                        help="Download detailed parameter data as Excel with monthly breakdown"
+                    )
+
+                except ImportError:
+                    st.info("Install xlsxwriter for Excel export: `pip install xlsxwriter`")
+
+            # Summary statistics
+            total_observations = availability_df['Total Observations'].sum()
+            active_parameters = len(availability_df)
+            avg_obs_per_param = round(total_observations / active_parameters) if active_parameters > 0 else 0
+
+            st.markdown(f"""
+            <div class="parameter-card">
+                <div class="parameter-header">Station Summary</div>
+                <div class="parameter-row">
+                    <div class="parameter-label">Total Observations:</div>
+                    <div class="parameter-value">{total_observations:,}</div>
+                </div>
+                <div class="parameter-row">
+                    <div class="parameter-label">Active Parameters:</div>
+                    <div class="parameter-value">{active_parameters}</div>
+                </div>
+                <div class="parameter-row">
+                    <div class="parameter-label">Avg per Parameter:</div>
+                    <div class="parameter-value">{avg_obs_per_param:,}</div>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+
+        else:
+            st.info("No parameter availability data to export.")
+
+    else:
+        st.info("No parameter archive metadata available.")
 
     # Main content area - Map and Table
     if show and not fdf.empty:

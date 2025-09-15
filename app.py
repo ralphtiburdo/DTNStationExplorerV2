@@ -1368,7 +1368,7 @@ def show_dashboard(df, token):
                 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
                 param_counts_df = get_parameter_counts(ac)
                 if not param_counts_df.empty:
-                    csv = param_counts_df.to_csv(index=False, sep=';')
+                    csv = param_counts_df.to_csv(index=False, sep=',')
                     st.download_button(
                         label="Download Parameter Counts by Month",
                         data=csv,

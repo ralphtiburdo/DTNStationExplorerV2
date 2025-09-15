@@ -597,7 +597,16 @@ def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
             if attempt == retries - 1 and status_placeholder:
                 status_placeholder.error(f"Failed after {retries} retries.")
                 return {}
-
+def get_parameter_counts(archive_counts):
+    """Create a DataFrame with parameter observation counts"""
+    recs = []
+    for param, months in (archive_counts or {}).items():
+        total = sum(months.values())
+        recs.append({
+            "Parameter": param,
+            "Total Observations": total
+        })
+    return pd.DataFrame(recs).sort_values("Parameter")
 
 # --- UI and main logic ---
 def show_dashboard(df, token):
@@ -998,6 +1007,7 @@ def show_dashboard(df, token):
         </style>
         """, unsafe_allow_html=True)
 
+
     # Main content area - Filters and Summary
     st.markdown("<div class='filter-section'>", unsafe_allow_html=True)
 
@@ -1330,33 +1340,21 @@ def show_dashboard(df, token):
                             </div>
                         </div>
                         """, unsafe_allow_html=True)
+
+            # Add download button for parameter counts
+            st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
+            param_counts_df = get_parameter_counts(ac)
+            csv = param_counts_df.to_csv(index=False)
+            st.download_button(
+                label="Download Parameter Counts",
+                data=csv,
+                file_name=f"{sel}_parameter_counts.csv",
+                mime="text/csv",
+                use_container_width=True
+            )
+
             else:
                 st.info("No parameter archive metadata available.")
-
-    def extract_parameter_metadata(archive_counts):
-        recs = []
-        for param, months in (archive_counts or {}).items():
-            if not isinstance(months, dict): continue
-            keys = sorted(months.keys(), key=lambda x: tuple(map(int, x.split('-'))))
-            first, last = (keys[0], keys[-1]) if keys else ("-", "-")
-            recs.append({
-                "Parameter": param,
-                "First Obs": pd.to_datetime(first, format="%Y-%m").strftime("%b %Y") if first != "-" else "-",
-                "Latest Obs": pd.to_datetime(last, format="%Y-%m").strftime("%b %Y") if last != "-" else "-"
-            })
-        return pd.DataFrame(recs).sort_values("Parameter")
-
-    # Add this function right after the extract_parameter_metadata function
-    def get_parameter_counts(archive_counts):
-        """Create a DataFrame with parameter observation counts"""
-        recs = []
-        for param, months in (archive_counts or {}).items():
-            total = sum(months.values())
-            recs.append({
-                "Parameter": param,
-                "Total Observations": total
-            })
-        return pd.DataFrame(recs).sort_values("Parameter")
 
     # Main content area - Map and Table
     if show and not fdf.empty:
@@ -1383,56 +1381,6 @@ def show_dashboard(df, token):
             height = min(35 * len(summary_tbl) + 40, 900)
             st.dataframe(summary_tbl, use_container_width=True, height=height, hide_index=True)
 
-
-# Parameter metadata table
-ac = p.get("archiveCounts", {})
-if ac:
-    st.markdown("<div class='section-header'>Parameter Metadata</div>", unsafe_allow_html=True)
-    param_df = extract_parameter_metadata(ac)
-
-    # Create card for each parameter
-    for _, row in param_df.iterrows():
-        param_name = row['Parameter']
-
-        param_card = f"""
-        <div class="parameter-card">
-            <div class="parameter-header">{param_name}</div>
-            <div class="parameter-row">
-                <div class="parameter-label">First Obs:</div>
-                <div class="parameter-value">{row['First Obs']}</div>
-            </div>
-            <div class="parameter-row">
-                <div class="parameter-label">Latest Obs:</div>
-                <div class="parameter-value">{row['Latest Obs']}</div>
-            </div>
-        </div>
-        """
-        st.markdown(param_card, unsafe_allow_html=True)
-
-        # Use expander for heatmap with custom label
-        with st.expander(f"{param_name} Availability", expanded=False):
-            # Wrap in custom styling
-            st.markdown(f"""
-            <div class="custom-expander">
-                <div class="custom-expander-content">
-                    {generate_heatmap(ac, param_name)}
-                </div>
-            </div>
-            """, unsafe_allow_html=True)
-
-    # Add download button for parameter counts
-    st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
-    param_counts_df = get_parameter_counts(ac)
-    csv = param_counts_df.to_csv(index=False)
-    st.download_button(
-        label="Download Parameter Counts",
-        data=csv,
-        file_name=f"{sel}_parameter_counts.csv",
-        mime="text/csv",
-        use_container_width=True
-    )
-else:
-    st.info("No parameter archive metadata available.")
 
 def top_nav_bar():
     """Create a fixed top navigation bar with access level dropdown in popover"""

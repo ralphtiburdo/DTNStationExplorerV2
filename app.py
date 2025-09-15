@@ -597,16 +597,41 @@ def fetch_station_metadata(code, token, retries=10, status_placeholder=None):
             if attempt == retries - 1 and status_placeholder:
                 status_placeholder.error(f"Failed after {retries} retries.")
                 return {}
+
 def get_parameter_counts(archive_counts):
-    """Create a DataFrame with parameter observation counts"""
-    recs = []
+    """Create a DataFrame with parameter observation counts by year"""
+    # Extract all unique years from the archive counts
+    all_years = set()
     for param, months in (archive_counts or {}).items():
-        total = sum(months.values())
-        recs.append({
-            "Parameter": param,
-            "Total Observations": total
-        })
-    return pd.DataFrame(recs).sort_values("Parameter")
+        for month_key in months.keys():
+            if '-' in month_key:
+                year = month_key.split('-')[0]
+                all_years.add(year)
+
+    # Sort years in ascending order
+    sorted_years = sorted(all_years)
+
+    # Create a list to store records
+    recs = []
+
+    for param, months in (archive_counts or {}).items():
+        # Initialize a dictionary for this parameter
+        param_data = {"parameter": param}
+
+        # Initialize all years to 0
+        for year in sorted_years:
+            param_data[year] = 0
+
+        # Sum counts by year
+        for month_key, count in months.items():
+            if '-' in month_key:
+                year = month_key.split('-')[0]
+                if year in param_data:
+                    param_data[year] += count
+
+        recs.append(param_data)
+
+    return pd.DataFrame(recs).sort_values("parameter")
 
 # --- UI and main logic ---
 def show_dashboard(df, token):
@@ -1344,14 +1369,15 @@ def show_dashboard(df, token):
                 # Add download button for parameter counts
                 st.markdown("<div style='margin-top: 20px;'></div>", unsafe_allow_html=True)
                 param_counts_df = get_parameter_counts(ac)
-                csv = param_counts_df.to_csv(index=False)
-                st.download_button(
-                    label="Download Parameter Counts",
-                    data=csv,
-                    file_name=f"{sel}_parameter_counts.csv",
-                    mime="text/csv",
-                    use_container_width=True
-                )
+                if not param_counts_df.empty:
+                    csv = param_counts_df.to_csv(index=False, sep=';')
+                    st.download_button(
+                        label="Download Parameter Counts by Year",
+                        data=csv,
+                        file_name=f"{sel}_parameter_counts_by_year.csv",
+                        mime="text/csv",
+                        use_container_width=True
+                    )
             else:
                 st.info("No parameter archive metadata available.")
 

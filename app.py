@@ -1353,8 +1353,8 @@ def show_dashboard(df, token):
                 use_container_width=True
             )
 
-            else:
-                st.info("No parameter archive metadata available.")
+        else:
+            st.info("No parameter archive metadata available.")
 
     # Main content area - Map and Table
     if show and not fdf.empty:

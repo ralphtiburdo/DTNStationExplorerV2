@@ -389,7 +389,7 @@ def cached_station_data(access_choice):
     df = pd.json_normalize(resp.json())
     df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
-               'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa',
+               'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa', 'tags.mmi': 'mmi',
                'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',
                'tags.ghcndID': 'ghcndID'}
 
@@ -1076,7 +1076,7 @@ def show_dashboard(df, token):
 
     if search.strip():
         terms = [t.strip().lower() for t in re.split(r"[,\s]+", search) if t.strip()]
-        mask = fdf[['stationCode', 'icao', 'wmo', 'mgID', 'madisId', 'iata', 'faa', 'name', 'davisId', 'dtnLegacyID',
+        mask = fdf[['stationCode', 'icao', 'wmo', 'mgID', 'madisId', 'iata', 'faa', 'name', 'davisId', 'dtnLegacyID', 'mmi',
                     'ghcndID']].astype(str).apply(
             lambda col: col.str.lower().isin(terms)).any(axis=1)
         if mask.any():
@@ -1146,7 +1146,7 @@ def show_dashboard(df, token):
             # Define columns to exclude from export
             EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob', 'isArchived', 'tags.wmo', 'tags.icao', 'tags.iata',
                             'tags.madisId', 'tags.ghcndID', 'tags.eaukID', 'tags.davisId', 'tags.dtnLegacyID',
-                            'tags.dwdID',
+                            'tags.dwdID','tags.mmi',
                             'tags.faa', 'lastObsTimestamp']
 
             # Get available columns excluding hidden ones
@@ -1203,7 +1203,7 @@ def show_dashboard(df, token):
     fdf = fdf[fdf['stationCode'].str.strip() != ""]
     required = ['stationCode', 'name', 'latitude', 'longitude', 'elevation', 'obsTypes', 'parameters']
     optional = [c for c in
-                ['Country', 'mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID',
+                ['Country', 'mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID', 'mmi',
                  'ghcndID'] if c in fdf.columns]
     raw = fdf[required + optional]
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in

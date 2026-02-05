@@ -383,7 +383,8 @@ def cached_station_data(access_choice):
     url = 'https://obs.api.dtn.com/v1/observations/stations'
     resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
         'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
-        'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD'
+        'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD',
+        'isArchived': 'True'
     })
     resp.raise_for_status()
     df = pd.json_normalize(resp.json())

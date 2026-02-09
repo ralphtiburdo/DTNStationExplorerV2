@@ -388,8 +388,38 @@ def cached_station_data(access_choice):
         'showTags': 'true'
     })
     resp.raise_for_status()
-    df = pd.json_normalize(resp.json())
-    df['Country'] = df.apply(lambda r: reverse_geocode_cached(r.latitude, r.longitude), axis=1)
+    data = resp.json()
+    
+    # v2 API returns GeoJSON format with features array
+    if 'features' in data:
+        features = data['features']
+        records = []
+        for f in features:
+            props = f.get('properties', {})
+            geom = f.get('geometry', {})
+            coords = geom.get('coordinates', [None, None])
+            record = {
+                'stationCode': f.get('stationCode', ''),
+                'longitude': coords[0] if coords else None,
+                'latitude': coords[1] if coords else None,
+                'elevation': props.get('elevation'),
+                'obsTypes': props.get('obsTypes', []),
+                'parameters': props.get('parameters', []),
+                'isArchived': props.get('isArchived'),
+                'lastObsTimestamp': props.get('lastObsTimestamp'),
+                'firstObsTimestamp': props.get('firstObsTimestamp'),
+            }
+            # Add tags
+            tags = props.get('tags', {})
+            if tags:
+                for k, v in tags.items():
+                    record[f'tags.{k}'] = v
+            records.append(record)
+        df = pd.DataFrame(records)
+    else:
+        df = pd.json_normalize(data)
+    
+    df['Country'] = df.apply(lambda r: reverse_geocode_cached(r['latitude'], r['longitude']), axis=1)
     tag_map = {'tags.name': 'name', 'tags.mgID': 'mgID', 'tags.wmo': 'wmo', 'tags.icao': 'icao',
                'tags.madisId': 'madisId', 'tags.eaukID': 'eaukID', 'tags.iata': 'iata', 'tags.faa': 'faa', 'tags.mmi': 'mmi',
                'tags.dwdID': 'dwdID', 'tags.davisId': 'davisId', 'tags.dtnLegacyID': 'dtnLegacyID',

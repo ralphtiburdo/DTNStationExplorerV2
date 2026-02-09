@@ -384,7 +384,8 @@ def cached_station_data(access_choice):
     resp = requests.get(url, headers={"Authorization": f"Bearer {token}"}, params={
         'by': 'boundingBox', 'minLat': '-90', 'maxLat': '90', 'minLon': '-180', 'maxLon': '180',
         'obsTypes': 'RWIS,AG,METAR,SYNOP,BUOY,Citizen,SHIP,Hydro,Others,HFM,GHCND,Customer,ISD',
-        'isArchived': 'True'
+        'isArchived': 'True',
+        'archived': 'True'
     })
     resp.raise_for_status()
     df = pd.json_normalize(resp.json())
@@ -1145,10 +1146,10 @@ def show_dashboard(df, token):
         # Export functionality
         with st.expander("Export Results", expanded=False):
             # Define columns to exclude from export
-            EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob', 'isArchived', 'tags.wmo', 'tags.icao', 'tags.iata',
+            EXCLUDE_COLS = ['tags.mgID', 'tags.name', 'search_blob', 'tags.wmo', 'tags.icao', 'tags.iata',
                             'tags.madisId', 'tags.ghcndID', 'tags.eaukID', 'tags.davisId', 'tags.dtnLegacyID',
                             'tags.dwdID','tags.mmi',
-                            'tags.faa', 'lastObsTimestamp']
+                            'tags.faa']
 
             # Get available columns excluding hidden ones
             available_cols = [c for c in df.columns if c not in EXCLUDE_COLS]
@@ -1205,7 +1206,7 @@ def show_dashboard(df, token):
     required = ['stationCode', 'name', 'latitude', 'longitude', 'elevation', 'obsTypes', 'parameters']
     optional = [c for c in
                 ['Country', 'mgID', 'wmo', 'icao', 'madisId', 'eaukID', 'iata', 'faa', 'dwdID', 'davisId', 'dtnLegacyID', 'mmi',
-                 'ghcndID'] if c in fdf.columns]
+                 'ghcndID', 'isArchived', 'lastObsTimestamp', 'firstObsTimestamp'] if c in fdf.columns]
     raw = fdf[required + optional]
     raw.columns = [c.title().replace('Stationcode', 'Station Code').replace('Obstypes', 'Obs Types') for c in
                    raw.columns]
